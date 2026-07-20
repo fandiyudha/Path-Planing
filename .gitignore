@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.ipynb_checkpoints/
+
+# Generated artifacts — regenerate with run_experiments.py / the smoke scripts.
+# (Kept out of the repo so the Streamlit deploy stays small; the dashboard
+#  generates everything it shows in-memory.)
+outputs/
+
+# Local logs and archives
+*.log
+*.zip
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Keep paper_assets/ in the repo if you want to share the paper figures;
+# otherwise uncomment the next line to exclude them.
+# paper_assets/

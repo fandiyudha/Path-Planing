@@ -1,0 +1,12 @@
+# Risk-aware UAV path-planning simulation -- dependencies.
+# Only numpy/scipy/matplotlib + pandas are used; the planners, LOS, the noise
+# generator and the cost function are implemented from scratch (no path-planning
+# or robotics libraries).  scipy is used only for low-level array helpers
+# (RegularGridInterpolator) and the Wilcoxon significance test.
+numpy>=1.26
+scipy>=1.11
+matplotlib>=3.8
+pandas>=2.0
+
+# Interactive dashboard (app.py). Not needed for run_experiments.py.
+streamlit>=1.40
