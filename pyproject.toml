@@ -2,3 +2,19 @@
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["outputs", "paper_assets"]
+
+[tool.ruff.lint]
+# pycodestyle errors/warnings, pyflakes, import sorting
+select = ["E", "W", "F", "I"]
+ignore = [
+    "E402",  # matplotlib.use("Agg") must run before pyplot is imported
+    "E741",  # single-letter names (I, l) follow the paper's notation
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["uav_pathplan"]

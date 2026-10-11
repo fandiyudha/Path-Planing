@@ -104,8 +104,8 @@ class Config:
     seed: int = 20240603
 
     # ---- world geometry -------------------------------------------------- #
-    world_size: float = 1000.0          # side length of the square world (m)
-    resolution: float = 5.0             # grid cell size (m) -> 200x200 default
+    world_size: float = 1000.0  # side length of the square world (m)
+    resolution: float = 5.0  # grid cell size (m) -> 200x200 default
 
     # ---- terrain: fractal base (value-noise fBm) ------------------------- #
     # Defaults tuned so the fractal base is gentle enough that nap-of-the-earth
@@ -114,28 +114,28 @@ class Config:
     # persistence) suppresses the high-frequency octaves that dominate slope,
     # and a mild post-generation Gaussian smooth removes residual grid-scale
     # roughness.  See terrain.py.
-    num_octaves: int = 5                # number of fBm octaves
-    persistence: float = 0.42           # amplitude decay per octave (<1); lower
-                                        # => high-frequency (steep) octaves decay
-                                        # faster => gentler slopes
-    lacunarity: float = 2.0             # frequency growth per octave (>1)
-    base_amplitude: float = 1.0         # relative amplitude of octave 0
-    base_lattice: int = 3               # lattice cells per side at octave 0
-    fractal_max: float = 200.0          # fBm base rescaled to [0, fractal_max] (m)
+    num_octaves: int = 5  # number of fBm octaves
+    persistence: float = 0.42  # amplitude decay per octave (<1); lower
+    # => high-frequency (steep) octaves decay
+    # faster => gentler slopes
+    lacunarity: float = 2.0  # frequency growth per octave (>1)
+    base_amplitude: float = 1.0  # relative amplitude of octave 0
+    base_lattice: int = 3  # lattice cells per side at octave 0
+    fractal_max: float = 200.0  # fBm base rescaled to [0, fractal_max] (m)
     terrain_smooth_sigma: float = 18.0  # Gaussian smooth of the fractal base
-                                        # (metres, 0 = off); applied AFTER the
-                                        # rescale and BEFORE scripted features,
-                                        # so masking ridges/hills stay sharp
+    # (metres, 0 = off); applied AFTER the
+    # rescale and BEFORE scripted features,
+    # so masking ridges/hills stay sharp
 
     # ---- terrain: parametric features ------------------------------------ #
     hills: list[GaussianHill] = field(default_factory=list)
     ridges: list[Ridge] = field(default_factory=list)
-    elevation_floor: float = 0.0        # clamp terrain below this to this (m)
+    elevation_floor: float = 0.0  # clamp terrain below this to this (m)
 
     # ---- altitude policy ------------------------------------------------- #
-    clearance: float = 50.0             # nap-of-the-earth clearance above terrain (m)
-    altitude_mode: str = "nap"          # "nap" -> h+clearance, "constant" -> const_alt
-    const_alt: float = 150.0            # used when altitude_mode == "constant" (m)
+    clearance: float = 50.0  # nap-of-the-earth clearance above terrain (m)
+    altitude_mode: str = "nap"  # "nap" -> h+clearance, "constant" -> const_alt
+    const_alt: float = 150.0  # used when altitude_mode == "constant" (m)
 
     # ---- radar / risk model ---------------------------------------------- #
     radars: list[RadarSpec] = field(default_factory=list)
@@ -145,25 +145,25 @@ class Config:
     # that, with the calibrated C below, the floored near-field hazard stays
     # large-but-finite (order 0.1-1.5), not an absurd spike.
     R0: float = 50.0
-    los_step: float = 5.0               # LOS sampling step along radar->p segment (m)
+    los_step: float = 5.0  # LOS sampling step along radar->p segment (m)
     # Reference detection point used to CALIBRATE each radar's power constant C
     # (see risk.calibrate_C).  Instead of a magic C, we pin a documented,
     # interpretable operating point: "a straight aircraft transit that crosses
     # the radar's coverage disc at closest slant range = ref_range_frac * R_max,
     # with clear line-of-sight, is detected with probability ref_detection_prob."
     # C is then solved so that reference transit yields Phi_ref = -ln(1 - p_ref).
-    ref_detection_prob: float = 0.5     # detection prob of the reference transit
-    ref_range_frac: float = 0.5         # closest approach as a fraction of R_max
-    ref_range_m: float | None = None    # absolute closest approach (m); overrides frac
+    ref_detection_prob: float = 0.5  # detection prob of the reference transit
+    ref_range_frac: float = 0.5  # closest approach as a fraction of R_max
+    ref_range_m: float | None = None  # absolute closest approach (m); overrides frac
 
     # ---- cost weights (must sum to 1, all >= 0) -------------------------- #
-    wL: float = 0.40                    # excess-length weight
-    wR: float = 0.45                    # detection-risk weight
-    wK: float = 0.15                    # kinematic-feasibility weight
+    wL: float = 0.40  # excess-length weight
+    wR: float = 0.45  # detection-risk weight
+    wK: float = 0.15  # kinematic-feasibility weight
 
     # ---- kinematic limits ------------------------------------------------ #
-    R_min: float = 60.0                 # minimum horizontal turn radius (m)
-    gamma_max_deg: float = 15.0         # max |flight-path angle| (deg)
+    R_min: float = 60.0  # minimum horizontal turn radius (m)
+    gamma_max_deg: float = 15.0  # max |flight-path angle| (deg)
     # Kinematic metrics (curvature, flight-path angle and their violation
     # counts) are evaluated on a copy of the path uniformly RESAMPLED to this
     # arc-length spacing, so they are spacing-independent and identical in
@@ -171,30 +171,30 @@ class Config:
     kin_resample_ds: float = 0.0
 
     # ---- A* planner ------------------------------------------------------ #
-    astar_connectivity: int = 16        # 8 or 16 connected motion
-    astar_num_headings: int = 16        # discrete headings in the search state
+    astar_connectivity: int = 16  # 8 or 16 connected motion
+    astar_num_headings: int = 16  # discrete headings in the search state
 
     # ---- APF planner ----------------------------------------------------- #
-    apf_xi: float | None = None         # attractive gain; None -> maps to wL
-    apf_eta: float | None = None        # repulsive gain; None -> maps to wR
-    apf_alpha: float = 5.0              # gradient-descent step length (m/iter)
+    apf_xi: float | None = None  # attractive gain; None -> maps to wL
+    apf_eta: float | None = None  # repulsive gain; None -> maps to wR
+    apf_alpha: float = 5.0  # gradient-descent step length (m/iter)
     apf_max_iter: int = 6000
-    apf_fd_step: float = 2.5            # finite-difference step for grad Lambda (m)
-    apf_goal_tol: float = 12.0          # goal capture radius (m)
-    apf_stuck_window: int = 60          # window length for local-minima detection
-    apf_stuck_disp: float = 8.0         # min net displacement over window (m)
-    apf_min_step: float = 1.0           # (deprecated) APF no longer shrinks the
-                                        # step for climb; kept for compatibility
+    apf_fd_step: float = 2.5  # finite-difference step for grad Lambda (m)
+    apf_goal_tol: float = 12.0  # goal capture radius (m)
+    apf_stuck_window: int = 60  # window length for local-minima detection
+    apf_stuck_disp: float = 8.0  # min net displacement over window (m)
+    apf_min_step: float = 1.0  # (deprecated) APF no longer shrinks the
+    # step for climb; kept for compatibility
 
     # ---- Hybrid planner -------------------------------------------------- #
-    hybrid_coarsen: int = 4             # coarse-grid factor for the global A* layer
-    hybrid_attract: float = 5.0         # local sub-goal tracking gain (>> wL): the
-                                        # global corridor is already risk-safe, so
-                                        # the local layer tracks it strongly while
-                                        # APF repulsion only fine-tunes/smooths.
+    hybrid_coarsen: int = 4  # coarse-grid factor for the global A* layer
+    hybrid_attract: float = 5.0  # local sub-goal tracking gain (>> wL): the
+    # global corridor is already risk-safe, so
+    # the local layer tracks it strongly while
+    # APF repulsion only fine-tunes/smooths.
 
     # ---- Monte-Carlo control --------------------------------------------- #
-    mc_runs: int = 20                   # randomized runs per scenario class
+    mc_runs: int = 20  # randomized runs per scenario class
 
     # ---- output ---------------------------------------------------------- #
     out_dir: Path = Path("outputs")

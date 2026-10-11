@@ -61,23 +61,23 @@ class CostResult:
     Ltil: float
     Rtil: float
     Ktil: float
-    L: float                    # horizontal path length (m)
-    L_ref: float                # straight-line start->goal length (m)
-    Phi: float                  # cumulative hazard integral
+    L: float  # horizontal path length (m)
+    L_ref: float  # straight-line start->goal length (m)
+    Phi: float  # cumulative hazard integral
     # geometry metrics (for the results tables)
-    Lambda_peak: float          # max midpoint hazard along the path
-    kappa_peak: float           # max discrete curvature (1/m)
-    curv_violations: int        # # interior vertices with kappa > kappa_max
-    gamma_peak: float           # max |flight-path angle| (rad)
-    climb_violations: int       # # segments with |gamma| > gamma_max
-    smoothness: float           # sum |dpsi| over interior vertices (rad)
+    Lambda_peak: float  # max midpoint hazard along the path
+    kappa_peak: float  # max discrete curvature (1/m)
+    curv_violations: int  # # interior vertices with kappa > kappa_max
+    gamma_peak: float  # max |flight-path angle| (rad)
+    climb_violations: int  # # segments with |gamma| > gamma_max
+    smoothness: float  # sum |dpsi| over interior vertices (rad)
 
 
 def _segment_geometry(waypoints: np.ndarray):
     """Return per-segment vectors, lengths, and headings."""
-    d = np.diff(waypoints, axis=0)                  # (N, 2)
-    ds = np.hypot(d[:, 0], d[:, 1])                 # (N,)
-    psi = np.arctan2(d[:, 1], d[:, 0])              # (N,)
+    d = np.diff(waypoints, axis=0)  # (N, 2)
+    ds = np.hypot(d[:, 0], d[:, 1])  # (N,)
+    psi = np.arctan2(d[:, 1], d[:, 0])  # (N,)
     return d, ds, psi
 
 
@@ -110,8 +110,9 @@ def resample_polyline(waypoints: np.ndarray, spacing: float) -> np.ndarray:
     return np.column_stack([np.interp(t, s, P[:, 0]), np.interp(t, s, P[:, 1])])
 
 
-def evaluate(cfg: Config, risk: RiskField, terrain: TerrainField,
-             waypoints: np.ndarray) -> CostResult:
+def evaluate(
+    cfg: Config, risk: RiskField, terrain: TerrainField, waypoints: np.ndarray
+) -> CostResult:
     """Compute J and all components/metrics for a horizontal path.
 
     ``waypoints`` is ``(M, 2)`` in world metres.  Altitudes are taken from the
@@ -119,10 +120,21 @@ def evaluate(cfg: Config, risk: RiskField, terrain: TerrainField,
     """
     P = np.asarray(waypoints, dtype=float)
     if P.ndim != 2 or P.shape[0] < 2:
-        return CostResult(J=1e6, Ltil=1e6, Rtil=1.0, Ktil=1e6, L=0.0,
-                          L_ref=0.0, Phi=0.0, Lambda_peak=0.0, kappa_peak=0.0,
-                          curv_violations=0, gamma_peak=0.0,
-                          climb_violations=0, smoothness=0.0)
+        return CostResult(
+            J=1e6,
+            Ltil=1e6,
+            Rtil=1.0,
+            Ktil=1e6,
+            L=0.0,
+            L_ref=0.0,
+            Phi=0.0,
+            Lambda_peak=0.0,
+            kappa_peak=0.0,
+            curv_violations=0,
+            gamma_peak=0.0,
+            climb_violations=0,
+            smoothness=0.0,
+        )
 
     p_s, p_g = P[0], P[-1]
     L_ref = float(np.hypot(*(p_g - p_s)))
@@ -133,8 +145,8 @@ def evaluate(cfg: Config, risk: RiskField, terrain: TerrainField,
     Ltil = (L - L_ref) / L_ref
 
     # --- detection: hazard at segment midpoints, integrated over arc length --
-    mids = 0.5 * (P[:-1] + P[1:])                   # (N, 2)
-    haz_mid = np.asarray(risk.Lambda(mids[:, 0], mids[:, 1]))   # altitude policy
+    mids = 0.5 * (P[:-1] + P[1:])  # (N, 2)
+    haz_mid = np.asarray(risk.Lambda(mids[:, 0], mids[:, 1]))  # altitude policy
     Phi = float(np.sum(haz_mid * ds))
     Rtil = float(1.0 - np.exp(-Phi))
     Lambda_peak = float(haz_mid.max()) if haz_mid.size else 0.0
@@ -156,12 +168,12 @@ def evaluate(cfg: Config, risk: RiskField, terrain: TerrainField,
     gamma_peak = float(gamma_abs.max()) if gamma_abs.size else 0.0
 
     # --- horizontal turning at interior vertices (resampled) ----------------
-    N = dsq.size                                     # number of resampled segments
+    N = dsq.size  # number of resampled segments
     if N >= 2:
-        dpsi = wrap_angle(psiq[1:] - psiq[:-1])      # (N-1,) interior vertices
+        dpsi = wrap_angle(psiq[1:] - psiq[:-1])  # (N-1,) interior vertices
         dpsi_abs = np.abs(dpsi)
-        sbar = 0.5 * (dsq[:-1] + dsq[1:])            # (N-1,)
-        kappa = dpsi_abs / np.maximum(sbar, 1e-9)    # (N-1,)
+        sbar = 0.5 * (dsq[:-1] + dsq[1:])  # (N-1,)
+        kappa = dpsi_abs / np.maximum(sbar, 1e-9)  # (N-1,)
         kappa_peak = float(kappa.max())
         curv_violations = int(np.sum(kappa > cfg.kappa_max))
         smoothness = float(dpsi_abs.sum())
@@ -175,37 +187,46 @@ def evaluate(cfg: Config, risk: RiskField, terrain: TerrainField,
         kappa_peak = 0.0
         curv_violations = 0
         smoothness = 0.0
-        Ktil = float(np.maximum(0.0, (gamma_abs[0] - cfg.gamma_max) / cfg.gamma_max)) \
-            if gamma_abs.size else 0.0
+        Ktil = (
+            float(np.maximum(0.0, (gamma_abs[0] - cfg.gamma_max) / cfg.gamma_max))
+            if gamma_abs.size
+            else 0.0
+        )
 
     J = cfg.wL * Ltil + cfg.wR * Rtil + cfg.wK * Ktil
     return CostResult(
-        J=float(J), Ltil=float(Ltil), Rtil=Rtil, Ktil=Ktil, L=L, L_ref=L_ref,
-        Phi=Phi, Lambda_peak=Lambda_peak, kappa_peak=kappa_peak,
-        curv_violations=curv_violations, gamma_peak=gamma_peak,
-        climb_violations=climb_violations, smoothness=smoothness,
+        J=float(J),
+        Ltil=float(Ltil),
+        Rtil=Rtil,
+        Ktil=Ktil,
+        L=L,
+        L_ref=L_ref,
+        Phi=Phi,
+        Lambda_peak=Lambda_peak,
+        kappa_peak=kappa_peak,
+        curv_violations=curv_violations,
+        gamma_peak=gamma_peak,
+        climb_violations=climb_violations,
+        smoothness=smoothness,
     )
 
 
 # --------------------------------------------------------------------------- #
 # Per-edge helpers used by A* (same weights, same Lambda, same L_ref)          #
 # --------------------------------------------------------------------------- #
-def edge_length_cost(cfg: Config, a: np.ndarray, b: np.ndarray,
-                     L_ref: float) -> float:
+def edge_length_cost(cfg: Config, a: np.ndarray, b: np.ndarray, L_ref: float) -> float:
     """wL * ||b-a|| / L_ref."""
     return cfg.wL * float(np.hypot(*(b - a))) / max(L_ref, 1e-9)
 
 
-def edge_risk_cost(cfg: Config, risk: RiskField, a: np.ndarray,
-                   b: np.ndarray) -> float:
+def edge_risk_cost(cfg: Config, risk: RiskField, a: np.ndarray, b: np.ndarray) -> float:
     """wR * Lambda(midpoint) * ||b-a||  (matches the Phi integrand)."""
     mid = 0.5 * (a + b)
     haz = float(risk.Lambda(mid[0], mid[1]))
     return cfg.wR * haz * float(np.hypot(*(b - a)))
 
 
-def turn_curvature(psi_prev: float, psi_new: float, ds_prev: float,
-                   ds_new: float) -> float:
+def turn_curvature(psi_prev: float, psi_new: float, ds_prev: float, ds_new: float) -> float:
     """Discrete curvature kappa for a heading change between two segments."""
     dpsi = abs(float(wrap_angle(psi_new - psi_prev)))
     sbar = 0.5 * (ds_prev + ds_new)

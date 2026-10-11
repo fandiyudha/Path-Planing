@@ -67,9 +67,16 @@ def _grad_lambda(risk: RiskField, x: float, y: float, h: float):
     return float(lx), float(ly)
 
 
-def apf_step(cfg: Config, terrain: TerrainField, risk: RiskField,
-             p: np.ndarray, psi: float, target: np.ndarray,
-             xi: float, eta: float):
+def apf_step(
+    cfg: Config,
+    terrain: TerrainField,
+    risk: RiskField,
+    p: np.ndarray,
+    psi: float,
+    target: np.ndarray,
+    xi: float,
+    eta: float,
+):
     """One kinematically-clamped APF descent step toward ``target``.
 
     Shared by :func:`plan_apf` (single goal) and the Hybrid planner (moving
@@ -83,15 +90,19 @@ def apf_step(cfg: Config, terrain: TerrainField, risk: RiskField,
     dist_t = math.hypot(target[0] - p[0], target[1] - p[1])
     to_t = (target - p) / max(dist_t, 1e-9)
     gradL = np.array(_grad_lambda(risk, p[0], p[1], cfg.apf_fd_step))
-    F = xi * to_t - eta * gradL                       # descent force = -grad U
+    F = xi * to_t - eta * gradL  # descent force = -grad U
     nF = math.hypot(F[0], F[1])
     if nF < 1e-12:
         return p.copy(), psi, 0.0
 
     # provisional heading: steepest turn toward F, limited to kappa_max*base_step
     raw_dpsi = float(wrap_angle(math.atan2(F[1], F[0]) - psi))
-    prov_dir = np.array([math.cos(psi + max(-max_dpsi, min(max_dpsi, raw_dpsi))),
-                         math.sin(psi + max(-max_dpsi, min(max_dpsi, raw_dpsi)))])
+    prov_dir = np.array(
+        [
+            math.cos(psi + max(-max_dpsi, min(max_dpsi, raw_dpsi))),
+            math.sin(psi + max(-max_dpsi, min(max_dpsi, raw_dpsi))),
+        ]
+    )
 
     # speed factor: do not fly into rising potential; if the turn-limited
     # heading cannot align with the descent force, the vehicle cannot progress.
@@ -118,8 +129,7 @@ def apf_step(cfg: Config, terrain: TerrainField, risk: RiskField,
     return p_new, psi_new, s
 
 
-def plan_apf(cfg: Config, terrain: TerrainField, risk: RiskField,
-             start_xy, goal_xy) -> PlanResult:
+def plan_apf(cfg: Config, terrain: TerrainField, risk: RiskField, start_xy, goal_xy) -> PlanResult:
     """Run APF gradient descent from ``start_xy`` to ``goal_xy`` (world metres)."""
     t0 = time.perf_counter()
     xi = cfg.wL if cfg.apf_xi is None else cfg.apf_xi
@@ -128,7 +138,7 @@ def plan_apf(cfg: Config, terrain: TerrainField, risk: RiskField,
     p = np.array([float(start_xy[0]), float(start_xy[1])])
     goal = np.array([gx, gy])
 
-    psi = math.atan2(gy - p[1], gx - p[0])     # initial heading toward goal
+    psi = math.atan2(gy - p[1], gx - p[0])  # initial heading toward goal
     path = [p.copy()]
     window = deque(maxlen=cfg.apf_stuck_window)
     window.append(p.copy())
@@ -155,11 +165,16 @@ def plan_apf(cfg: Config, terrain: TerrainField, risk: RiskField,
     # spike.  The clamp then guarantees realised curvature <= kappa_max.
     arr = np.array(path)
 
-    reason = ("reached_goal" if success
-              else "local_minimum" if stuck
-              else "max_iter")
-    return PlanResult(name="apf", path=arr, success=success, time_s=elapsed,
-                      n_iter=k, info={"reason": reason, "stuck": stuck,
-                                      "final_dist_to_goal":
-                                      float(math.hypot(arr[-1][0] - gx,
-                                                       arr[-1][1] - gy))})
+    reason = "reached_goal" if success else "local_minimum" if stuck else "max_iter"
+    return PlanResult(
+        name="apf",
+        path=arr,
+        success=success,
+        time_s=elapsed,
+        n_iter=k,
+        info={
+            "reason": reason,
+            "stuck": stuck,
+            "final_dist_to_goal": float(math.hypot(arr[-1][0] - gx, arr[-1][1] - gy)),
+        },
+    )

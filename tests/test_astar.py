@@ -72,7 +72,9 @@ def test_astar_open_terrain(tmp_path):
         norm=LogNorm(vmin=vmax * 1e-4, vmax=vmax),
         aspect="equal",
     )
-    ax.contour(terrain.xs, terrain.ys, terrain.h, levels=10, colors="cyan", linewidths=0.4, alpha=0.4)
+    ax.contour(
+        terrain.xs, terrain.ys, terrain.h, levels=10, colors="cyan", linewidths=0.4, alpha=0.4
+    )
     ax.plot(res.path[:, 0], res.path[:, 1], "-", color="white", lw=2.0, label="A-Star path")
     ax.plot(*start, "o", color="lime", ms=11, mec="k", label="start")
     ax.plot(*goal, "*", color="red", ms=16, mec="k", label="goal")

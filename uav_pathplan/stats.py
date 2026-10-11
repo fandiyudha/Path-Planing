@@ -35,10 +35,10 @@ class PairTest:
     median_b: float
     statistic: float
     p_value: float
-    significant: bool          # raw p_value < alpha (unadjusted)
+    significant: bool  # raw p_value < alpha (unadjusted)
     note: str = ""
-    p_holm: float = np.nan     # Holm-adjusted within the scenario (valid pairs)
-    significant_holm: bool = False   # p_holm < alpha
+    p_holm: float = np.nan  # Holm-adjusted within the scenario (valid pairs)
+    significant_holm: bool = False  # p_holm < alpha
 
 
 def _matched(rows: list[RunMetrics], scenario: str, alg: str, metric: str) -> dict:
@@ -71,8 +71,7 @@ def holm_adjust(p_values) -> np.ndarray:
     return out
 
 
-def paired_tests(rows: list[RunMetrics], metric: str = "J",
-                 alpha: float = 0.05) -> list[PairTest]:
+def paired_tests(rows: list[RunMetrics], metric: str = "J", alpha: float = 0.05) -> list[PairTest]:
     """Run Wilcoxon signed-rank tests for all algorithm pairs, per scenario."""
     scenarios = sorted({r.scenario for r in rows})
     algos = ["astar", "apf", "hybrid"]
@@ -84,11 +83,18 @@ def paired_tests(rows: list[RunMetrics], metric: str = "J",
             common = sorted(set(vals[a]) & set(vals[b]))
             xa = np.array([vals[a][i] for i in common], dtype=float)
             xb = np.array([vals[b][i] for i in common], dtype=float)
-            pt = PairTest(scenario=scn, metric=metric, alg_a=a, alg_b=b,
-                          n_pairs=len(common),
-                          median_a=float(np.median(xa)) if xa.size else np.nan,
-                          median_b=float(np.median(xb)) if xb.size else np.nan,
-                          statistic=np.nan, p_value=np.nan, significant=False)
+            pt = PairTest(
+                scenario=scn,
+                metric=metric,
+                alg_a=a,
+                alg_b=b,
+                n_pairs=len(common),
+                median_a=float(np.median(xa)) if xa.size else np.nan,
+                median_b=float(np.median(xb)) if xb.size else np.nan,
+                statistic=np.nan,
+                p_value=np.nan,
+                significant=False,
+            )
             if len(common) < 1 or np.allclose(xa, xb):
                 pt.note = "insufficient or identical paired data"
             else:
@@ -97,7 +103,7 @@ def paired_tests(rows: list[RunMetrics], metric: str = "J",
                     pt.statistic = float(stat)
                     pt.p_value = float(p)
                     pt.significant = bool(p < alpha)
-                except ValueError as e:           # e.g. all differences zero
+                except ValueError as e:  # e.g. all differences zero
                     pt.note = f"wilcoxon: {e}"
             results.append(pt)
         # Holm correction over the valid pairs of this scenario
@@ -112,4 +118,5 @@ def paired_tests(rows: list[RunMetrics], metric: str = "J",
 def tests_to_frame(tests: list[PairTest]):
     """Convert paired-test results to a pandas DataFrame."""
     import pandas as pd
+
     return pd.DataFrame([t.__dict__ for t in tests])

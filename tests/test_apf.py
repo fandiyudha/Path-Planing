@@ -40,7 +40,9 @@ def render(spec, res, fname, title):
         norm=LogNorm(vmin=vmax * 1e-4, vmax=vmax),
         aspect="equal",
     )
-    ax.contour(terrain.xs, terrain.ys, terrain.h, levels=8, colors="cyan", linewidths=0.3, alpha=0.4)
+    ax.contour(
+        terrain.xs, terrain.ys, terrain.h, levels=8, colors="cyan", linewidths=0.3, alpha=0.4
+    )
     if res.n_waypoints:
         ax.plot(res.path[:, 0], res.path[:, 1], "-", color="white", lw=1.8)
     ax.plot(*spec.start, "o", color="lime", ms=11, mec="k")

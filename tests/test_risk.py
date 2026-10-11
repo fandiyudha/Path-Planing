@@ -74,7 +74,9 @@ def test_risk_field_and_los(tmp_path):
         f"grid vs callable at ({xc:.0f},{yc:.0f}): "
         f"grid={g:.6g}  callable={c:.6g}  |diff|={abs(g - c):.2e}"
     )
-    print(f"hazard grid: min={H.min():.4g} max={H.max():.4g} nonzero cells={(H > 0).sum()}/{H.size}")
+    print(
+        f"hazard grid: min={H.min():.4g} max={H.max():.4g} nonzero cells={(H > 0).sum()}/{H.size}"
+    )
     assert abs(g - c) <= 1e-12 * max(1.0, abs(c))
 
     # --- plot ----------------------------------------------------------- #
@@ -92,7 +94,9 @@ def test_risk_field_and_los(tmp_path):
         aspect="equal",
     )
     # terrain contours to show where the ridge sits
-    ax.contour(terrain.xs, terrain.ys, terrain.h, levels=10, colors="cyan", linewidths=0.4, alpha=0.5)
+    ax.contour(
+        terrain.xs, terrain.ys, terrain.h, levels=10, colors="cyan", linewidths=0.4, alpha=0.5
+    )
     for k, r in enumerate(cfg.radars):
         ax.plot(r.x, r.y, "X", color="lime", ms=12, mec="k")
         ax.add_patch(

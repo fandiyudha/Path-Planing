@@ -49,16 +49,16 @@ def _bilinear_upsample(lattice: np.ndarray, n: int) -> np.ndarray:
     t = (np.arange(n) + 0.5) / n * (m - 1)
     i0 = np.floor(t).astype(int)
     i1 = np.minimum(i0 + 1, m - 1)
-    frac = t - i0                                   # blend weight in [0, 1)
+    frac = t - i0  # blend weight in [0, 1)
 
     # Separable bilinear blend: interpolate along rows then columns.
     # Gather the four neighbouring lattice values per output pixel.
-    fy = frac[:, None]                              # (n, 1)
-    fx = frac[None, :]                              # (1, n)
-    a = lattice[np.ix_(i0, i0)]                     # top-left   (n, n)
-    b = lattice[np.ix_(i0, i1)]                     # top-right
-    c = lattice[np.ix_(i1, i0)]                     # bottom-left
-    d = lattice[np.ix_(i1, i1)]                     # bottom-right
+    fy = frac[:, None]  # (n, 1)
+    fx = frac[None, :]  # (1, n)
+    a = lattice[np.ix_(i0, i0)]  # top-left   (n, n)
+    b = lattice[np.ix_(i0, i1)]  # top-right
+    c = lattice[np.ix_(i1, i0)]  # bottom-left
+    d = lattice[np.ix_(i1, i1)]  # bottom-right
     top = a + (b - a) * fx
     bot = c + (d - c) * fx
     return top + (bot - top) * fy
@@ -97,7 +97,7 @@ def _fractal_base(cfg: Config, rng: np.random.Generator) -> np.ndarray:
 def _add_hill(field: np.ndarray, X: np.ndarray, Y: np.ndarray, hill: GaussianHill) -> None:
     """Add an isotropic Gaussian hill in place."""
     r2 = (X - hill.cx) ** 2 + (Y - hill.cy) ** 2
-    field += hill.height * np.exp(-r2 / (2.0 * hill.sigma ** 2))
+    field += hill.height * np.exp(-r2 / (2.0 * hill.sigma**2))
 
 
 def _add_ridge(field: np.ndarray, X: np.ndarray, Y: np.ndarray, ridge: Ridge) -> None:
@@ -111,13 +111,12 @@ def _add_ridge(field: np.ndarray, X: np.ndarray, Y: np.ndarray, ridge: Ridge) ->
     th = np.deg2rad(ridge.orientation_deg)
     ct, st = np.cos(th), np.sin(th)
     dx, dy = X - ridge.cx, Y - ridge.cy
-    u = dx * ct + dy * st                           # along axis
-    v = -dx * st + dy * ct                          # across axis
+    u = dx * ct + dy * st  # along axis
+    v = -dx * st + dy * ct  # across axis
     # Distance past the plateau ends (0 inside the half-length).
     along = np.maximum(np.abs(u) - ridge.length, 0.0)
     field += ridge.height * np.exp(
-        -(along ** 2) / (2.0 * ridge.sigma ** 2)
-        - (v ** 2) / (2.0 * ridge.sigma ** 2)
+        -(along**2) / (2.0 * ridge.sigma**2) - (v**2) / (2.0 * ridge.sigma**2)
     )
 
 
@@ -126,9 +125,9 @@ class TerrainField:
     """Discretised elevation field plus a continuous bilinear sampler."""
 
     cfg: Config
-    h: np.ndarray                       # [n_cells, n_cells], indexed [iy, ix]
-    xs: np.ndarray                      # cell-centre x coordinates (n_cells,)
-    ys: np.ndarray                      # cell-centre y coordinates (n_cells,)
+    h: np.ndarray  # [n_cells, n_cells], indexed [iy, ix]
+    xs: np.ndarray  # cell-centre x coordinates (n_cells,)
+    ys: np.ndarray  # cell-centre y coordinates (n_cells,)
     _interp: RegularGridInterpolator
 
     # ----------------------------------------------------------------- #
@@ -137,7 +136,7 @@ class TerrainField:
         """Build the elevation field from ``cfg`` (fully seeded)."""
         rng = np.random.default_rng(cfg.seed)
         xs, ys = cfg.cell_centers()
-        X, Y = np.meshgrid(xs, ys)      # X,Y shape [n, n], row=y col=x
+        X, Y = np.meshgrid(xs, ys)  # X,Y shape [n, n], row=y col=x
 
         h = _fractal_base(cfg, rng)
         for hill in cfg.hills:
@@ -148,8 +147,11 @@ class TerrainField:
 
         # Continuous sampler over (y, x) cell-centre grid; clamps to edges.
         interp = RegularGridInterpolator(
-            (ys, xs), h, method="linear",
-            bounds_error=False, fill_value=None,
+            (ys, xs),
+            h,
+            method="linear",
+            bounds_error=False,
+            fill_value=None,
         )
         return cls(cfg=cfg, h=h, xs=xs, ys=ys, _interp=interp)
 

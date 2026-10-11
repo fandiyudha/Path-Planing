@@ -39,8 +39,7 @@ from .config import Config, RadarSpec
 from .terrain import TerrainField
 
 
-def calibrate_C(R_max: float, R0: float, ref_range: float,
-                p_ref: float) -> float:
+def calibrate_C(R_max: float, R0: float, ref_range: float, p_ref: float) -> float:
     """Solve the radar power constant C from a documented reference detection.
 
     Reference geometry (fully reproducible):
@@ -65,12 +64,15 @@ def calibrate_C(R_max: float, R0: float, ref_range: float,
     we integrate numerically so the general case is also handled.)
     """
     ref_range = min(max(ref_range, 1e-6), 0.999 * R_max)
-    s_max = float(np.sqrt(max(R_max ** 2 - ref_range ** 2, 0.0)))
+    s_max = float(np.sqrt(max(R_max**2 - ref_range**2, 0.0)))
     s = np.linspace(-s_max, s_max, 4001)
-    R = np.sqrt(ref_range ** 2 + s ** 2)
+    R = np.sqrt(ref_range**2 + s**2)
     integrand = 1.0 / np.maximum(R, R0) ** 4
-    I = float(np.trapezoid(integrand, s)) if hasattr(np, "trapezoid") \
+    I = (
+        float(np.trapezoid(integrand, s))
+        if hasattr(np, "trapezoid")
         else float(np.trapz(integrand, s))
+    )
     phi_target = -np.log(max(1.0 - p_ref, 1e-12))
     return phi_target / max(I, 1e-300)
 
@@ -83,15 +85,16 @@ class RiskField:
     terrain: TerrainField
     radars: list[RadarSpec]
     # Per-radar phase-centre elevation (ground h at radar + mast height).
-    _radar_z: np.ndarray                # shape (J,)
-    _radar_C: np.ndarray                # shape (J,), effective power constant
-    _grid: np.ndarray | None = None     # cached hazard grid at planning altitude
+    _radar_z: np.ndarray  # shape (J,)
+    _radar_C: np.ndarray  # shape (J,), effective power constant
+    _grid: np.ndarray | None = None  # cached hazard grid at planning altitude
     _interp: RegularGridInterpolator | None = field(default=None, repr=False)
 
     # ----------------------------------------------------------------- #
     @classmethod
-    def build(cls, cfg: Config, terrain: TerrainField,
-              radars: list[RadarSpec] | None = None) -> "RiskField":
+    def build(
+        cls, cfg: Config, terrain: TerrainField, radars: list[RadarSpec] | None = None
+    ) -> "RiskField":
         """Construct the risk field; radars default to ``cfg.radars``.
 
         Each radar's power constant C is taken from ``RadarSpec.C`` when set
@@ -109,13 +112,12 @@ class RiskField:
             if r.C is not None:
                 cvals.append(float(r.C))
             else:
-                ref_range = (cfg.ref_range_m if cfg.ref_range_m is not None
-                             else cfg.ref_range_frac * r.R_max)
-                cvals.append(calibrate_C(r.R_max, cfg.R0, ref_range,
-                                         cfg.ref_detection_prob))
+                ref_range = (
+                    cfg.ref_range_m if cfg.ref_range_m is not None else cfg.ref_range_frac * r.R_max
+                )
+                cvals.append(calibrate_C(r.R_max, cfg.R0, ref_range, cfg.ref_detection_prob))
         rc = np.array(cvals, dtype=float)
-        return cls(cfg=cfg, terrain=terrain, radars=radars,
-                   _radar_z=rz, _radar_C=rc)
+        return cls(cfg=cfg, terrain=terrain, radars=radars, _radar_z=rz, _radar_C=rc)
 
     # ----------------------------------------------------------------- #
     # Line of sight                                                      #
@@ -131,7 +133,7 @@ class RiskField:
         dx, dy, dz = x - rx, y - ry, z - rz
         horiz = float(np.hypot(dx, dy))
         if horiz < 1e-9:
-            return True                                  # directly overhead
+            return True  # directly overhead
         n_samples = max(2, int(np.ceil(horiz / self.cfg.los_step)))
         # Interior sample fractions (exclude both endpoints).
         t = np.linspace(0.0, 1.0, n_samples + 1)[1:-1]
@@ -144,8 +146,9 @@ class RiskField:
         # Masked if terrain is above the line anywhere (small tolerance).
         return not bool(np.any(terr > line_z + 1e-6))
 
-    def _visible_vec(self, radar_idx: int, X: np.ndarray, Y: np.ndarray,
-                     Z: np.ndarray) -> np.ndarray:
+    def _visible_vec(
+        self, radar_idx: int, X: np.ndarray, Y: np.ndarray, Z: np.ndarray
+    ) -> np.ndarray:
         """Vectorised LOS for many query points against one radar.
 
         Returns a boolean array (1 = visible).  We march all segments together:
@@ -188,7 +191,7 @@ class RiskField:
         else:
             Z = np.broadcast_to(np.asarray(z, dtype=float), X.shape).astype(float)
 
-        scalar = (X.ndim == 0)
+        scalar = X.ndim == 0
         Xb, Yb, Zb = np.broadcast_arrays(X, Y, Z)
         total = np.zeros(Xb.shape, dtype=float)
         for j, r in enumerate(self.radars):
@@ -214,12 +217,12 @@ class RiskField:
         if self._grid is not None and not recompute:
             return self._grid
         xs, ys = self.terrain.xs, self.terrain.ys
-        X, Y = np.meshgrid(xs, ys)                       # [n, n], row=y col=x
-        self._grid = np.asarray(self.Lambda(X, Y))      # altitude from policy
+        X, Y = np.meshgrid(xs, ys)  # [n, n], row=y col=x
+        self._grid = np.asarray(self.Lambda(X, Y))  # altitude from policy
         # Build the fast bilinear interpolant over the grid (used by APF).
         self._interp = RegularGridInterpolator(
-            (ys, xs), self._grid, method="linear",
-            bounds_error=False, fill_value=None)
+            (ys, xs), self._grid, method="linear", bounds_error=False, fill_value=None
+        )
         return self._grid
 
     # ----------------------------------------------------------------- #
@@ -236,14 +239,11 @@ class RiskField:
         caller staying inside the world).
         """
         if self._interp is None:
-            self.grid()                                  # builds _interp
-        xa = np.clip(np.asarray(x, dtype=float),
-                     self.terrain.xs[0], self.terrain.xs[-1])
-        ya = np.clip(np.asarray(y, dtype=float),
-                     self.terrain.ys[0], self.terrain.ys[-1])
-        scalar = (xa.ndim == 0)
-        pts = np.stack([np.atleast_1d(ya).ravel(),
-                        np.atleast_1d(xa).ravel()], axis=-1)
+            self.grid()  # builds _interp
+        xa = np.clip(np.asarray(x, dtype=float), self.terrain.xs[0], self.terrain.xs[-1])
+        ya = np.clip(np.asarray(y, dtype=float), self.terrain.ys[0], self.terrain.ys[-1])
+        scalar = xa.ndim == 0
+        pts = np.stack([np.atleast_1d(ya).ravel(), np.atleast_1d(xa).ravel()], axis=-1)
         out = np.maximum(self._interp(pts), 0.0)
         if scalar:
             return float(out[0])

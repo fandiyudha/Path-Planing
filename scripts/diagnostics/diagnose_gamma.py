@@ -19,22 +19,23 @@ from dataclasses import replace
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from uav_pathplan.config import Config
-from uav_pathplan import scenarios as scn
 from uav_pathplan import cost as costmod
+from uav_pathplan import scenarios as scn
+from uav_pathplan.config import Config
 from uav_pathplan.cost import wrap_angle
-from uav_pathplan.terrain import TerrainField
-from uav_pathplan.risk import RiskField
-from uav_pathplan.planners.astar import plan_astar
 from uav_pathplan.planners.apf import plan_apf
+from uav_pathplan.planners.astar import plan_astar
 from uav_pathplan.planners.hybrid import plan_hybrid
+from uav_pathplan.risk import RiskField
+from uav_pathplan.terrain import TerrainField
 
 SEED = 20240603
-RESOLUTION = 5.0                      # finest (Config default): worst case for (C)
+RESOLUTION = 5.0  # finest (Config default): worst case for (C)
 PLANNERS = [("astar", plan_astar), ("apf", plan_apf), ("hybrid", plan_hybrid)]
 
 
@@ -46,14 +47,15 @@ def dist(name, arr, unit=""):
     if a.size == 0:
         print(f"    {name:24s}: (empty)")
         return
-    print(f"    {name:24s}: min={a.min():7.2f}  med={np.median(a):7.2f}  "
-          f"mean={a.mean():7.2f}  p90={np.percentile(a,90):7.2f}  "
-          f"p95={np.percentile(a,95):7.2f}  max={a.max():7.2f} {unit}")
+    print(
+        f"    {name:24s}: min={a.min():7.2f}  med={np.median(a):7.2f}  "
+        f"mean={a.mean():7.2f}  p90={np.percentile(a, 90):7.2f}  "
+        f"p95={np.percentile(a, 95):7.2f}  max={a.max():7.2f} {unit}"
+    )
 
 
 def build(scenario, resolution):
-    spec = scn.build_scenario(scenario, master_seed=SEED, run_idx=0,
-                              randomize=False)
+    spec = scn.build_scenario(scenario, master_seed=SEED, run_idx=0, randomize=False)
     cfg = replace(spec.cfg, seed=SEED, resolution=resolution)
     terrain = TerrainField.generate(cfg)
     risk = RiskField.build(cfg, terrain)
@@ -63,7 +65,7 @@ def build(scenario, resolution):
 
 def terrain_slope_deg(cfg, terrain):
     """Per-cell terrain slope in degrees using the true grid spacing."""
-    gy, gx = np.gradient(terrain.h, cfg.resolution)     # d/dy, d/dx (m/m)
+    gy, gx = np.gradient(terrain.h, cfg.resolution)  # d/dy, d/dx (m/m)
     mag = np.hypot(gx, gy)
     return np.degrees(np.arctan(mag))
 
@@ -125,8 +127,11 @@ def ktil_split(cfg, terrain, P):
     kappa = dpsi / np.maximum(sbar, 1e-9)
     kappa_pen = np.maximum(0.0, (kappa - cfg.kappa_max) / cfg.kappa_max)
     gamma_pen = np.maximum(0.0, (gamma_abs[1:] - cfg.gamma_max) / cfg.gamma_max)
-    return (float(np.mean(kappa_pen + gamma_pen)),
-            float(np.mean(kappa_pen)), float(np.mean(gamma_pen)))
+    return (
+        float(np.mean(kappa_pen + gamma_pen)),
+        float(np.mean(kappa_pen)),
+        float(np.mean(gamma_pen)),
+    )
 
 
 def run_paths(cfg, terrain, risk, start, goal):
@@ -140,11 +145,14 @@ def run_paths(cfg, terrain, risk, start, goal):
 
 # --------------------------------------------------------------------------- #
 def main():
-    out = Path("outputs"); out.mkdir(exist_ok=True)
+    out = Path("outputs")
+    out.mkdir(exist_ok=True)
     gmax = 15.0
     print("=" * 78)
-    print(f"GAMMA VIOLATION DIAGNOSIS  (seed={SEED}, resolution={RESOLUTION} m, "
-          f"gamma_max={gmax:.0f} deg, clearance=50 m)")
+    print(
+        f"GAMMA VIOLATION DIAGNOSIS  (seed={SEED}, resolution={RESOLUTION} m, "
+        f"gamma_max={gmax:.0f} deg, clearance=50 m)"
+    )
     print("MEASUREMENT ONLY — nothing is modified or fixed.")
     print("=" * 78)
 
@@ -156,10 +164,8 @@ def main():
         sl = terrain_slope_deg(cfg, terr)
         frac = float((sl > gmax).mean()) * 100
         rough[s] = (float(np.percentile(sl, 95)), frac)
-        print(f"    {s:16s}: p95={rough[s][0]:5.1f} deg   "
-              f"cells>gmax={frac:5.1f}%")
-    rough_scn = max([s for s in rough if s != "open"],
-                    key=lambda s: rough[s][1])
+        print(f"    {s:16s}: p95={rough[s][0]:5.1f} deg   cells>gmax={frac:5.1f}%")
+    rough_scn = max([s for s in rough if s != "open"], key=lambda s: rough[s][1])
     scenarios = ["open", rough_scn]
     print(f"    -> detailed report on: open  and  {rough_scn} (roughest non-open)")
 
@@ -174,31 +180,39 @@ def main():
         frac_over = float((slope > gmax).mean()) * 100
         print("\n[1] TERRAIN SLOPE ITSELF  (tests cause A: terrain too steep)")
         dist("terrain slope (deg)", slope, "deg")
-        print(f"    fraction of grid cells with slope > gamma_max({gmax:.0f}deg)"
-              f" = {frac_over:.1f}%")
-        print(f"    HINT: if this fraction is large, no terrain-hugging path can "
-              f"satisfy the limit (cause A).")
+        print(
+            f"    fraction of grid cells with slope > gamma_max({gmax:.0f}deg) = {frac_over:.1f}%"
+        )
+        print(
+            "    HINT: if this fraction is large, no terrain-hugging path can "
+            "satisfy the limit (cause A)."
+        )
 
         if scenario == "open":
             fig, ax = plt.subplots(figsize=(7, 4.5))
             ax.hist(slope.ravel(), bins=80, color="#4477aa", alpha=0.85)
-            ax.axvline(gmax, color="red", ls="--", lw=2,
-                       label=f"gamma_max = {gmax:.0f} deg")
-            ax.set_xlabel("terrain slope (deg)"); ax.set_ylabel("grid-cell count")
-            ax.set_title(f"Terrain slope distribution — {scenario} "
-                         f"(seed {SEED}, {cfg.resolution:.0f} m grid)")
-            ax.legend(); fig.tight_layout()
+            ax.axvline(gmax, color="red", ls="--", lw=2, label=f"gamma_max = {gmax:.0f} deg")
+            ax.set_xlabel("terrain slope (deg)")
+            ax.set_ylabel("grid-cell count")
+            ax.set_title(
+                f"Terrain slope distribution — {scenario} "
+                f"(seed {SEED}, {cfg.resolution:.0f} m grid)"
+            )
+            ax.legend()
+            fig.tight_layout()
             fig.savefig(out / "diag_terrain_slope.png", dpi=130)
             plt.close(fig)
-            print(f"    saved histogram: {out/'diag_terrain_slope.png'}")
+            print(f"    saved histogram: {out / 'diag_terrain_slope.png'}")
 
         # ---- run the three planners once ----------------------------------
         paths = run_paths(cfg, terrain, risk, start, goal)
 
         # ---- Section 2: spacing & angle, with resampling (cause C) --------
         print("\n[2] PER-STEP SPACING & ANGLE  (tests cause C: spacing too fine)")
-        print(f"    grid resolution = {cfg.resolution:.1f} m;  APF/Hybrid step "
-              f"apf_alpha = {cfg.apf_alpha:.1f} m")
+        print(
+            f"    grid resolution = {cfg.resolution:.1f} m;  APF/Hybrid step "
+            f"apf_alpha = {cfg.apf_alpha:.1f} m"
+        )
         for name in ("astar", "apf", "hybrid"):
             res = paths[name]
             P = res.path
@@ -210,51 +224,69 @@ def main():
             print(f"  -- {name}  (success={res.success}, waypoints={len(P)})")
             dist("ds_horizontal (m)", ds, "m")
             dist("per-step |gamma| (deg)", gamma, "deg")
-            print(f"      steps over gamma_max: {nviol}/{gamma.size} "
-                  f"({100*nviol/gamma.size:.1f}%),  peak={gamma.max():.1f} deg")
+            print(
+                f"      steps over gamma_max: {nviol}/{gamma.size} "
+                f"({100 * nviol / gamma.size:.1f}%),  peak={gamma.max():.1f} deg"
+            )
             for factor in (2, 5):
                 Q = resample_polyline(P, factor * cfg.resolution)
                 gq, _ = path_gammas_deg(cfg, terrain, Q)
                 if gq.size:
                     nq = int((gq > gmax).sum())
-                    print(f"      resampled @ {factor}x res "
-                          f"({factor*cfg.resolution:.0f} m): "
-                          f"peak={gq.max():5.1f} deg, "
-                          f"viol={nq}/{gq.size} ({100*nq/gq.size:.1f}%)")
-        print("    HINT: if violations shrink sharply under coarser resampling "
-              "AND terrain slope is gentle, cause C (discretization) matters.")
+                    print(
+                        f"      resampled @ {factor}x res "
+                        f"({factor * cfg.resolution:.0f} m): "
+                        f"peak={gq.max():5.1f} deg, "
+                        f"viol={nq}/{gq.size} ({100 * nq / gq.size:.1f}%)"
+                    )
+        print(
+            "    HINT: if violations shrink sharply under coarser resampling "
+            "AND terrain slope is gentle, cause C (discretization) matters."
+        )
 
         # ---- Section 3: penalty magnitude inside J (cause B) --------------
         print("\n[3] COST COMPONENT MAGNITUDES  (tests cause B: weak penalty)")
         # representative path = the successful one with the worst gamma peak
-        cand = [(n, p) for n, p in paths.items()
-                if p.success and p.n_waypoints > 2]
+        cand = [(n, p) for n, p in paths.items() if p.success and p.n_waypoints > 2]
         if not cand:
             cand = [(n, p) for n, p in paths.items() if p.n_waypoints > 2]
         rep_name, rep = max(
-            cand, key=lambda np_: path_gammas_deg(cfg, terrain, np_[1].path)[0].max()
-            if path_gammas_deg(cfg, terrain, np_[1].path)[0].size else 0.0)
+            cand,
+            key=lambda np_: (
+                path_gammas_deg(cfg, terrain, np_[1].path)[0].max()
+                if path_gammas_deg(cfg, terrain, np_[1].path)[0].size
+                else 0.0
+            ),
+        )
         cr = costmod.evaluate(cfg, risk, terrain, rep.path)
         Ktil, kterm, gterm = ktil_split(cfg, terrain, rep.path)
         cL, cR, cK = cfg.wL * cr.Ltil, cfg.wR * cr.Rtil, cfg.wK * Ktil
         cK_kappa, cK_gamma = cfg.wK * kterm, cfg.wK * gterm
         J = cr.J
-        print(f"    representative path: {rep_name}  (J={J:.4f}, "
-              f"gamma_peak={np.degrees(cr.gamma_peak):.1f} deg, "
-              f"climb_violations={cr.climb_violations})")
+        print(
+            f"    representative path: {rep_name}  (J={J:.4f}, "
+            f"gamma_peak={np.degrees(cr.gamma_peak):.1f} deg, "
+            f"climb_violations={cr.climb_violations})"
+        )
         print(f"    weights: wL={cfg.wL}, wR={cfg.wR}, wK={cfg.wK}")
-        print(f"    wL*Ltil = {cL:.4f}   ({100*cL/J:5.1f}% of J)")
-        print(f"    wR*Rtil = {cR:.4f}   ({100*cR/J:5.1f}% of J)")
-        print(f"    wK*Ktil = {cK:.4f}   ({100*cK/J:5.1f}% of J)")
-        print(f"        within wK*Ktil:")
-        print(f"          curvature term wK*mean(kappa_pen) = {cK_kappa:.4f} "
-              f"({100*cK_kappa/J:5.1f}% of J)")
-        print(f"          gamma term     wK*mean(gamma_pen) = {cK_gamma:.4f} "
-              f"({100*cK_gamma/J:5.1f}% of J)")
+        print(f"    wL*Ltil = {cL:.4f}   ({100 * cL / J:5.1f}% of J)")
+        print(f"    wR*Rtil = {cR:.4f}   ({100 * cR / J:5.1f}% of J)")
+        print(f"    wK*Ktil = {cK:.4f}   ({100 * cK / J:5.1f}% of J)")
+        print("        within wK*Ktil:")
+        print(
+            f"          curvature term wK*mean(kappa_pen) = {cK_kappa:.4f} "
+            f"({100 * cK_kappa / J:5.1f}% of J)"
+        )
+        print(
+            f"          gamma term     wK*mean(gamma_pen) = {cK_gamma:.4f} "
+            f"({100 * cK_gamma / J:5.1f}% of J)"
+        )
         gfrac = 100 * cK_gamma / J if J > 0 else 0.0
         print(f"    GAMMA-violation term is {gfrac:.1f}% of total J.")
-        print(f"    HINT: if this is a tiny fraction, the planner has little "
-              f"incentive to avoid climbs (cause B).")
+        print(
+            "    HINT: if this is a tiny fraction, the planner has little "
+            "incentive to avoid climbs (cause B)."
+        )
 
         # stash for verdict
         if scenario == "open":
@@ -270,9 +302,11 @@ def main():
                     Q = resample_polyline(paths[name].path, 5 * cfg.resolution)
                     gq, _ = path_gammas_deg(cfg, terrain, Q)
                     verdict_data["resample"][name] = (
-                        float(g0.max()), float(gq.max()) if gq.size else float("nan"),
+                        float(g0.max()),
+                        float(gq.max()) if gq.size else float("nan"),
                         int((g0 > gmax).sum()),
-                        int((gq > gmax).sum()) if gq.size else 0)
+                        int((gq > gmax).sum()) if gq.size else 0,
+                    )
 
     # ---- Section 4: verdict (open scenario evidence) ----------------------
     print("\n" + "=" * 78)
@@ -289,15 +323,22 @@ def main():
     C = any(red >= 50 and p5 < p0 - 3 for _, p0, p5, red in c_evidence)
     B = vd["gfrac"] < 3.0
 
-    print(f"  (A) terrain too steep : {'YES' if A else 'no'}  "
-          f"(p95 slope={vd['slope_p95']:.1f} deg, "
-          f"{vd['frac_over']:.1f}% of cells > {gmax:.0f} deg)")
-    print(f"  (B) penalty too weak  : {'YES' if B else 'no'}  "
-          f"(gamma term = {vd['gfrac']:.1f}% of J at wK={Config().wK})")
-    cdesc = ", ".join(f"{n}: {p0:.0f}->{p5:.0f}deg ({red:.0f}% fewer viol)"
-                      for n, p0, p5, red in c_evidence) or "n/a"
-    print(f"  (C) spacing too fine  : {'YES' if C else 'no'}  "
-          f"(peak @5x resample — {cdesc})")
+    print(
+        f"  (A) terrain too steep : {'YES' if A else 'no'}  "
+        f"(p95 slope={vd['slope_p95']:.1f} deg, "
+        f"{vd['frac_over']:.1f}% of cells > {gmax:.0f} deg)"
+    )
+    print(
+        f"  (B) penalty too weak  : {'YES' if B else 'no'}  "
+        f"(gamma term = {vd['gfrac']:.1f}% of J at wK={Config().wK})"
+    )
+    cdesc = (
+        ", ".join(
+            f"{n}: {p0:.0f}->{p5:.0f}deg ({red:.0f}% fewer viol)" for n, p0, p5, red in c_evidence
+        )
+        or "n/a"
+    )
+    print(f"  (C) spacing too fine  : {'YES' if C else 'no'}  (peak @5x resample — {cdesc})")
     causes = [c for c, on in [("A", A), ("B", B), ("C", C)] if on]
     print(f"\n  EVIDENCE SUPPORTS: {', '.join(causes) if causes else 'none clearly'}")
     print("  (No fix applied — awaiting decision.)")

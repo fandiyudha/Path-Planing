@@ -31,16 +31,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from uav_pathplan.config import Config
-from uav_pathplan.terrain import TerrainField
-from uav_pathplan.risk import RiskField
-from uav_pathplan.planners.astar import plan_astar
-from uav_pathplan.planners.apf import plan_apf
-from uav_pathplan.planners.hybrid import plan_hybrid
-from uav_pathplan import scenarios as scn
-from uav_pathplan.metrics import compute_metrics, aggregate, RunMetrics
-from uav_pathplan.stats import paired_tests, tests_to_frame
 from uav_pathplan import plotting
+from uav_pathplan import scenarios as scn
+from uav_pathplan.config import Config
+from uav_pathplan.metrics import RunMetrics, aggregate, compute_metrics
+from uav_pathplan.planners.apf import plan_apf
+from uav_pathplan.planners.astar import plan_astar
+from uav_pathplan.planners.hybrid import plan_hybrid
+from uav_pathplan.risk import RiskField
+from uav_pathplan.stats import paired_tests, tests_to_frame
+from uav_pathplan.terrain import TerrainField
 
 SCENARIOS = ["open", "concave_trap", "ridge_corridor", "high_density"]
 
@@ -57,7 +57,7 @@ def _build(spec, resolution):
     terrain = TerrainField.generate(cfg)
     risk = RiskField.build(cfg, terrain)
     t0 = time.perf_counter()
-    H = risk.grid()                         # exact-LOS precompute, done once
+    H = risk.grid()  # exact-LOS precompute, done once
     setup_s = time.perf_counter() - t0
     return spec, cfg, terrain, risk, H, setup_s
 
@@ -83,15 +83,12 @@ def monte_carlo(args) -> list[RunMetrics]:
     for scenario in args.scenarios:
         print(f"\n=== scenario: {scenario} ===")
         for run in range(args.runs):
-            spec = scn.build_scenario(scenario, master_seed=args.seed,
-                                      run_idx=run, randomize=True)
+            spec = scn.build_scenario(scenario, master_seed=args.seed, run_idx=run, randomize=True)
             spec, cfg, terrain, risk, H, setup_s = _build(spec, args.resolution)
             line = f"  run {run:2d} (terrain seed {cfg.seed}, setup {setup_s:.1f}s): "
             for name, fn in PLANNERS:
-                res, mem = _run_planner(fn, cfg, terrain, risk,
-                                        spec.start, spec.goal, H, args.mem)
-                m = compute_metrics(cfg, terrain, risk, scenario, name, run,
-                                    res, peak_mem_kib=mem)
+                res, mem = _run_planner(fn, cfg, terrain, risk, spec.start, spec.goal, H, args.mem)
+                m = compute_metrics(cfg, terrain, risk, scenario, name, run, res, peak_mem_kib=mem)
                 rows.append(m)
                 line += f"{name}={'OK' if res.success else 'x'}({res.time_s:.1f}s) "
             print(line)
@@ -101,25 +98,30 @@ def monte_carlo(args) -> list[RunMetrics]:
 def make_overlays(args, out: Path):
     """Canonical (deterministic) overlay + 3D figures per scenario."""
     for scenario in args.scenarios:
-        spec = scn.build_scenario(scenario, master_seed=args.seed,
-                                  run_idx=0, randomize=False)
+        spec = scn.build_scenario(scenario, master_seed=args.seed, run_idx=0, randomize=False)
         spec, cfg, terrain, risk, H, _ = _build(spec, args.resolution)
         results, mrows = {}, {}
         for name, fn in PLANNERS:
-            res, _ = _run_planner(fn, cfg, terrain, risk, spec.start,
-                                  spec.goal, H, False)
+            res, _ = _run_planner(fn, cfg, terrain, risk, spec.start, spec.goal, H, False)
             results[name] = res
             # metric values for the legend (read from the run record)
-            mrows[name] = compute_metrics(cfg, terrain, risk, scenario, name,
-                                          0, res).as_dict()
+            mrows[name] = compute_metrics(cfg, terrain, risk, scenario, name, 0, res).as_dict()
         # No in-figure titles: the scenario is identified in the paper caption.
-        plotting.plot_overlay(cfg, terrain, risk, spec.start, spec.goal,
-                              results, out / f"overlay_{scenario}.{args.format}",
-                              "", metrics=mrows)
+        plotting.plot_overlay(
+            cfg,
+            terrain,
+            risk,
+            spec.start,
+            spec.goal,
+            results,
+            out / f"overlay_{scenario}.{args.format}",
+            "",
+            metrics=mrows,
+        )
         # 3D surface with EVERY attempted path (incl. failed APF stub + marker)
         plotting.plot_surface_with_paths(
-            cfg, terrain, results, out / f"surface_{scenario}.{args.format}",
-            "", metrics=mrows)
+            cfg, terrain, results, out / f"surface_{scenario}.{args.format}", "", metrics=mrows
+        )
         print(f"  overlay+surface saved for {scenario}")
 
 
@@ -130,18 +132,21 @@ def time_vs_threats(args, out: Path):
     nexp = {"astar": [], "hybrid": []}
     print("\n=== time vs threat count ===")
     for nr in counts:
-        spec = scn.build_high_density(master_seed=args.seed, run_idx=0,
-                                      randomize=False, n_radars=nr)
+        spec = scn.build_high_density(
+            master_seed=args.seed, run_idx=0, randomize=False, n_radars=nr
+        )
         spec, cfg, terrain, risk, H, _ = _build(spec, args.resolution)
         for name, fn in [("astar", plan_astar), ("hybrid", plan_hybrid)]:
-            res, _ = _run_planner(fn, cfg, terrain, risk, spec.start,
-                                  spec.goal, H, False)
+            res, _ = _run_planner(fn, cfg, terrain, risk, spec.start, spec.goal, H, False)
             times[name].append(res.time_s)
             nexp[name].append(res.n_exp)
-        print(f"  radars={nr:2d}: A*={times['astar'][-1]:.2f}s "
-              f"(n_exp={nexp['astar'][-1]}), Hybrid={times['hybrid'][-1]:.2f}s")
-    plotting.plot_time_vs_threats(counts, times, out / f"time_vs_threats.{args.format}",
-                                  nexp_by_alg=nexp)
+        print(
+            f"  radars={nr:2d}: A*={times['astar'][-1]:.2f}s "
+            f"(n_exp={nexp['astar'][-1]}), Hybrid={times['hybrid'][-1]:.2f}s"
+        )
+    plotting.plot_time_vs_threats(
+        counts, times, out / f"time_vs_threats.{args.format}", nexp_by_alg=nexp
+    )
 
 
 def pareto_sweep(args, out: Path):
@@ -149,6 +154,7 @@ def pareto_sweep(args, out: Path):
     spec = scn.build_pareto(master_seed=args.seed, run_idx=0, randomize=False)
     spec, cfg0, terrain, risk, H, _ = _build(spec, args.resolution)
     from uav_pathplan import cost as costmod
+
     wR_list = [0.05, 0.20, 0.35, 0.50, 0.65, 0.80] if not args.quick else [0.1, 0.45, 0.8]
     wK = cfg0.wK
     L_vals, R_vals, used_wR = [], [], []
@@ -158,11 +164,12 @@ def pareto_sweep(args, out: Path):
         if wL < 0:
             continue
         cfg = replace(cfg0, wL=wL, wR=wR, wK=wK)
-        res, _ = _run_planner(plan_astar, cfg, terrain, risk, spec.start,
-                              spec.goal, H, False)
+        res, _ = _run_planner(plan_astar, cfg, terrain, risk, spec.start, spec.goal, H, False)
         if res.n_waypoints > 1:
             cr = costmod.evaluate(cfg, risk, terrain, res.path)
-            L_vals.append(cr.L); R_vals.append(cr.Rtil); used_wR.append(wR)
+            L_vals.append(cr.L)
+            R_vals.append(cr.Rtil)
+            used_wR.append(wR)
             print(f"  wR={wR:.2f}: L={cr.L:.0f}m  Rtil={cr.Rtil:.3f}")
     if L_vals:
         plotting.plot_pareto(L_vals, R_vals, used_wR, out / f"pareto_LvsR.{args.format}")
@@ -179,13 +186,19 @@ def main():
     ap.add_argument("--quick", action="store_true", help="fast sanity pass")
     ap.add_argument("--full", action="store_true", help="5 m grid, 20 runs")
     ap.add_argument("--no-plots", action="store_true")
-    ap.add_argument("--dpi", type=int, default=300,
-                    help="figure resolution in DPI (default 300)")
-    ap.add_argument("--format", choices=["png", "tiff", "eps"], default="png",
-                    help="figure file format (default png)")
-    ap.add_argument("--figures-only", action="store_true",
-                    help="regenerate the deterministic figures only "
-                         "(skip the Monte-Carlo runs, CSVs, and tests)")
+    ap.add_argument("--dpi", type=int, default=300, help="figure resolution in DPI (default 300)")
+    ap.add_argument(
+        "--format",
+        choices=["png", "tiff", "eps"],
+        default="png",
+        help="figure file format (default png)",
+    )
+    ap.add_argument(
+        "--figures-only",
+        action="store_true",
+        help="regenerate the deterministic figures only "
+        "(skip the Monte-Carlo runs, CSVs, and tests)",
+    )
     args = ap.parse_args()
 
     if args.quick:
@@ -193,13 +206,16 @@ def main():
     if args.full:
         args.resolution, args.runs = 5.0, 20
 
-    plotting.SAVE_DPI = args.dpi            # applies to every saved figure
+    plotting.SAVE_DPI = args.dpi  # applies to every saved figure
 
-    out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
     t_start = time.perf_counter()
-    print(f"UAV path-planning experiments | master seed = {args.seed} | "
-          f"resolution = {args.resolution} m | runs = {args.runs} | "
-          f"dpi = {args.dpi} | format = {args.format}")
+    print(
+        f"UAV path-planning experiments | master seed = {args.seed} | "
+        f"resolution = {args.resolution} m | runs = {args.runs} | "
+        f"dpi = {args.dpi} | format = {args.format}"
+    )
 
     # --- figures-only fast path (deterministic; no Monte-Carlo) ------------
     if args.figures_only:
@@ -235,22 +251,21 @@ def main():
     print("=" * 78)
     print(plotting.console_summary(agg))
 
-    print("\nPaired Wilcoxon signed-rank tests on final cost J "
-          "(alpha=0.05):")
+    print("\nPaired Wilcoxon signed-rank tests on final cost J (alpha=0.05):")
     for t in tests:
         if t.n_pairs == 0:
             continue
-        verdict = ("significant" if t.significant else "n.s.") \
-            if not t.note else t.note
+        verdict = ("significant" if t.significant else "n.s.") if not t.note else t.note
         p = f"p={t.p_value:.4g}" if t.p_value == t.p_value else "p=-"
         ph = f"p_holm={t.p_holm:.4g}" if t.p_holm == t.p_holm else "p_holm=-"
-        print(f"  [{t.scenario:>14}] {t.alg_a:>5} vs {t.alg_b:<6} "
-              f"n={t.n_pairs:2d}  med {t.median_a:.3f} vs {t.median_b:.3f}  "
-              f"{p}  {ph}  {verdict}")
+        print(
+            f"  [{t.scenario:>14}] {t.alg_a:>5} vs {t.alg_b:<6} "
+            f"n={t.n_pairs:2d}  med {t.median_a:.3f} vs {t.median_b:.3f}  "
+            f"{p}  {ph}  {verdict}"
+        )
 
     print(f"\nWrote CSVs and figures to {out.resolve()}")
-    print(f"Total wall-clock: {time.perf_counter() - t_start:.1f}s  "
-          f"(master seed {args.seed})")
+    print(f"Total wall-clock: {time.perf_counter() - t_start:.1f}s  (master seed {args.seed})")
 
 
 if __name__ == "__main__":

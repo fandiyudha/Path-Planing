@@ -17,12 +17,12 @@ class PlanResult:
     """Uniform result container for every planner."""
 
     name: str
-    path: np.ndarray                # (M, 2) world-metre waypoints (empty if fail)
+    path: np.ndarray  # (M, 2) world-metre waypoints (empty if fail)
     success: bool
-    time_s: float                   # wall-clock planning time (s)
-    n_exp: int = 0                  # A*: expanded nodes
-    n_iter: int = 0                 # APF/Hybrid: gradient iterations
-    info: dict = field(default_factory=dict)   # planner-specific extras
+    time_s: float  # wall-clock planning time (s)
+    n_exp: int = 0  # A*: expanded nodes
+    n_iter: int = 0  # APF/Hybrid: gradient iterations
+    info: dict = field(default_factory=dict)  # planner-specific extras
 
     @property
     def n_waypoints(self) -> int:

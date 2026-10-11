@@ -44,12 +44,10 @@ from . import PlanResult
 
 def _moves(connectivity: int):
     """List of integer (dx, dy) cell offsets for 8- or 16-connectivity."""
-    base = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1),
-            (1, -1), (1, 0), (1, 1)]
+    base = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
     if connectivity == 8:
         return base
-    knight = [(-2, -1), (-2, 1), (-1, -2), (-1, 2),
-              (1, -2), (1, 2), (2, -1), (2, 1)]
+    knight = [(-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1)]
     return base + knight
 
 
@@ -65,9 +63,15 @@ def _shift(arr: np.ndarray, ox: int, oy: int) -> np.ndarray:
     return out
 
 
-def plan_astar(cfg: Config, terrain: TerrainField, risk: RiskField,
-               start_xy, goal_xy, grid_step: int = 1,
-               hazard_grid: np.ndarray | None = None) -> PlanResult:
+def plan_astar(
+    cfg: Config,
+    terrain: TerrainField,
+    risk: RiskField,
+    start_xy,
+    goal_xy,
+    grid_step: int = 1,
+    hazard_grid: np.ndarray | None = None,
+) -> PlanResult:
     """A* from ``start_xy`` to ``goal_xy`` (world metres).
 
     ``grid_step`` coarsens the effective lattice (used by the Hybrid planner's
@@ -98,9 +102,9 @@ def plan_astar(cfg: Config, terrain: TerrainField, risk: RiskField,
     # ---- precompute move geometry and per-move edge-cost arrays -------- #
     moves = _moves(cfg.astar_connectivity)
     nm = len(moves)
-    seg = np.array([math.hypot(dx, dy) for dx, dy in moves]) * s * res   # (nm,)
-    head = np.array([math.atan2(dy, dx) for dx, dy in moves])           # (nm,)
-    length_cost = cfg.wL * seg / L_ref                                  # (nm,)
+    seg = np.array([math.hypot(dx, dy) for dx, dy in moves]) * s * res  # (nm,)
+    head = np.array([math.atan2(dy, dx) for dx, dy in moves])  # (nm,)
+    length_cost = cfg.wL * seg / L_ref  # (nm,)
 
     kmax, inv_kmax = cfg.kappa_max, 1.0 / cfg.kappa_max
     gmax = cfg.gamma_max
@@ -108,7 +112,7 @@ def plan_astar(cfg: Config, terrain: TerrainField, risk: RiskField,
     dpsi = np.abs((head[:, None] - head[None, :] + np.pi) % (2 * np.pi) - np.pi)
     sbar = 0.5 * (seg[:, None] + seg[None, :])
     kappa = dpsi / np.maximum(sbar, 1e-9)
-    turn_table = cfg.wK * np.maximum(0.0, (kappa - kmax) * inv_kmax)     # (nm, nm)
+    turn_table = cfg.wK * np.maximum(0.0, (kappa - kmax) * inv_kmax)  # (nm, nm)
 
     # per-move full-grid edge cost (length + risk + climb), excluding turn.
     edge_extra = np.empty((nm, n, n), dtype=float)
@@ -121,7 +125,7 @@ def plan_astar(cfg: Config, terrain: TerrainField, risk: RiskField,
         dz = np.abs(Zn - Z)
         gamma = np.arctan2(dz, seg[mi])
         climb_c = cfg.wK * np.maximum(0.0, (gamma - gmax) / gmax)
-        edge_extra[mi] = length_cost[mi] + risk_c + climb_c     # NaN where OOB
+        edge_extra[mi] = length_cost[mi] + risk_c + climb_c  # NaN where OOB
 
     # heuristic grid: wL * straight-line distance to goal / L_ref
     iy_g, ix_g = np.mgrid[0:n, 0:n]
@@ -165,9 +169,14 @@ def plan_astar(cfg: Config, terrain: TerrainField, risk: RiskField,
 
     elapsed = time.perf_counter() - t0
     if goal_state is None:
-        return PlanResult(name="astar", path=np.empty((0, 2)), success=False,
-                          time_s=elapsed, n_exp=n_exp,
-                          info={"reason": "no path found"})
+        return PlanResult(
+            name="astar",
+            path=np.empty((0, 2)),
+            success=False,
+            time_s=elapsed,
+            n_exp=n_exp,
+            info={"reason": "no path found"},
+        )
 
     cells = []
     st = goal_state
@@ -178,6 +187,11 @@ def plan_astar(cfg: Config, terrain: TerrainField, risk: RiskField,
     cells.reverse()
     path = np.array([[(cx + 0.5) * res, (cy + 0.5) * res] for cx, cy in cells])
 
-    return PlanResult(name="astar", path=path, success=True, time_s=elapsed,
-                      n_exp=n_exp, info={"grid_step": grid_step,
-                                         "n_states": len(g_score)})
+    return PlanResult(
+        name="astar",
+        path=path,
+        success=True,
+        time_s=elapsed,
+        n_exp=n_exp,
+        info={"grid_step": grid_step, "n_states": len(g_score)},
+    )

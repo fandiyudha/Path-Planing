@@ -31,12 +31,13 @@ from ..config import Config
 from ..risk import RiskField
 from ..terrain import TerrainField
 from . import PlanResult
-from .astar import plan_astar
 from .apf import apf_step
+from .astar import plan_astar
 
 
-def plan_hybrid(cfg: Config, terrain: TerrainField, risk: RiskField,
-                start_xy, goal_xy) -> PlanResult:
+def plan_hybrid(
+    cfg: Config, terrain: TerrainField, risk: RiskField, start_xy, goal_xy
+) -> PlanResult:
     """Run the Hybrid A*-APF planner from ``start_xy`` to ``goal_xy``."""
     t0 = time.perf_counter()
     # Local layer tracks the (already risk-safe) global corridor strongly; the
@@ -47,14 +48,18 @@ def plan_hybrid(cfg: Config, terrain: TerrainField, risk: RiskField,
     eta = cfg.wR if cfg.apf_eta is None else cfg.apf_eta
 
     # --- global layer: coarse A* ---------------------------------------- #
-    glob = plan_astar(cfg, terrain, risk, start_xy, goal_xy,
-                      grid_step=cfg.hybrid_coarsen)
+    glob = plan_astar(cfg, terrain, risk, start_xy, goal_xy, grid_step=cfg.hybrid_coarsen)
     if not glob.success or glob.n_waypoints < 2:
-        return PlanResult(name="hybrid", path=np.empty((0, 2)), success=False,
-                          time_s=time.perf_counter() - t0, n_exp=glob.n_exp,
-                          info={"reason": "global_astar_failed"})
+        return PlanResult(
+            name="hybrid",
+            path=np.empty((0, 2)),
+            success=False,
+            time_s=time.perf_counter() - t0,
+            n_exp=glob.n_exp,
+            info={"reason": "global_astar_failed"},
+        )
 
-    waypoints = glob.path                     # (W, 2) coarse corridor
+    waypoints = glob.path  # (W, 2) coarse corridor
     goal = np.array([float(goal_xy[0]), float(goal_xy[1])])
 
     # capture radius for advancing sub-goals (~ one coarse cell)
@@ -67,15 +72,16 @@ def plan_hybrid(cfg: Config, terrain: TerrainField, risk: RiskField,
     window = deque(maxlen=cfg.apf_stuck_window)
     window.append(p.copy())
 
-    sub_idx = 1                               # index of current sub-goal
+    sub_idx = 1  # index of current sub-goal
     success = False
     stuck = False
     k = 0
     for k in range(1, cfg.apf_max_iter + 1):
         # advance through any sub-goals already within capture radius
-        while (sub_idx < len(waypoints) - 1 and
-               math.hypot(waypoints[sub_idx][0] - p[0],
-                          waypoints[sub_idx][1] - p[1]) <= capture):
+        while (
+            sub_idx < len(waypoints) - 1
+            and math.hypot(waypoints[sub_idx][0] - p[0], waypoints[sub_idx][1] - p[1]) <= capture
+        ):
             sub_idx += 1
         target = goal if sub_idx >= len(waypoints) - 1 else waypoints[sub_idx]
 
@@ -98,14 +104,19 @@ def plan_hybrid(cfg: Config, terrain: TerrainField, risk: RiskField,
     # End within goal_tol; no exact-goal append (avoids a final curvature spike).
     arr = np.array(path)
 
-    reason = ("reached_goal" if success
-              else "local_minimum" if stuck else "max_iter")
-    return PlanResult(name="hybrid", path=arr, success=success, time_s=elapsed,
-                      n_exp=glob.n_exp, n_iter=k,
-                      info={"reason": reason,
-                            "global_waypoints": int(len(waypoints)),
-                            "global_time_s": glob.time_s,
-                            "coarsen": cfg.hybrid_coarsen,
-                            "final_dist_to_goal":
-                            float(math.hypot(arr[-1][0] - goal[0],
-                                             arr[-1][1] - goal[1]))})
+    reason = "reached_goal" if success else "local_minimum" if stuck else "max_iter"
+    return PlanResult(
+        name="hybrid",
+        path=arr,
+        success=success,
+        time_s=elapsed,
+        n_exp=glob.n_exp,
+        n_iter=k,
+        info={
+            "reason": reason,
+            "global_waypoints": int(len(waypoints)),
+            "global_time_s": glob.time_s,
+            "coarsen": cfg.hybrid_coarsen,
+            "final_dist_to_goal": float(math.hypot(arr[-1][0] - goal[0], arr[-1][1] - goal[1])),
+        },
+    )
