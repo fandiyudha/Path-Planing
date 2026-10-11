@@ -1,12 +1,22 @@
-# Risk-aware UAV path-planning simulation -- dependencies.
-# Only numpy/scipy/matplotlib + pandas are used; the planners, LOS, the noise
-# generator and the cost function are implemented from scratch (no path-planning
-# or robotics libraries).  scipy is used only for low-level array helpers
-# (RegularGridInterpolator) and the Wilcoxon significance test.
-numpy>=1.26
-scipy>=1.11
-matplotlib>=3.8
-pandas>=2.0
+# Risk-aware UAV path-planning simulation -- pinned dependencies.
+#
+# Python version used to verify reproduction: CPython 3.13.7 (64-bit, Windows 11).
+# numpy 2.3 and pandas 3.0 require Python >= 3.11.
+#
+# With exactly these versions, `python run_experiments.py --runs 20
+# --resolution 8 --seed 20240603` reproduces paper_assets/ (all non-timing
+# metrics identical; check with scripts/compare_to_paper.py).  The behaviour of
+# scipy's Wilcoxon test (exact vs. normal approximation, zero handling) may
+# differ between releases, so keep the scipy pin when reproducing p-values.
+#
+# Only numpy/scipy/matplotlib + pandas are used by the simulation; the
+# planners, LOS, the noise generator and the cost function are implemented
+# from scratch.  scipy provides RegularGridInterpolator, gaussian_filter and
+# the Wilcoxon signed-rank test.
+numpy==2.3.4
+scipy==1.17.1
+matplotlib==3.10.9
+pandas==3.0.2
 
-# Interactive dashboard (app.py). Not needed for run_experiments.py.
-streamlit>=1.40
+# Interactive dashboard (dashboard/app.py). Not needed for run_experiments.py.
+streamlit==1.58.0
