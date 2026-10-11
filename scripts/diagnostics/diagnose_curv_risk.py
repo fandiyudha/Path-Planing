@@ -1,4 +1,6 @@
-"""Diagnosis-only: test two suspected side-effects of the Option-1 gamma fix.
+"""Diagnostic (not used for paper results): check curvature and Rtil saturation side-effects.
+
+Tests two suspected side-effects of the Option-1 gamma fix:
 
   Suspicion 1 — the uniform arc-length resampling in cost.evaluate flattened the
                 curvature / smoothness discriminator (A* jagged vs APF smooth).
@@ -8,7 +10,7 @@
 This script imports the existing modules and only MEASURES + PRINTS + PLOTS.
 It changes no planner, cost, terrain, risk, or parameter.
 
-Run:  python diagnose_curv_risk.py
+Run (from the repository root):  python -m scripts.diagnostics.diagnose_curv_risk
 Writes: outputs/diag_curv_sweep.png, diag_loglambda_hist.png,
         diag_rtil_population.png, diag_pareto_mini.png
 """

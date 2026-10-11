@@ -1,4 +1,10 @@
-"""Verify radar-C calibration restored graded risk. Throwaway; reads only."""
+"""Diagnostic (not used for paper results): verify the radar-C calibration gives graded risk.
+
+Read-only check.  Run (from the repository root):
+    python -m scripts.diagnostics.verify_calib
+Writes outputs/calib_rtil_population.png and outputs/calib_pareto_main.png
+(the outputs/ directory must already exist).
+"""
 from dataclasses import replace
 import numpy as np
 import matplotlib; matplotlib.use("Agg")

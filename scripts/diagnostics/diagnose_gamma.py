@@ -1,4 +1,4 @@
-"""Diagnosis-only: measure the source of climb/dive (gamma) violations.
+"""Diagnostic (not used for paper results): find the source of climb/dive (gamma) violations.
 
 This script ADDS no behaviour to the simulation and modifies nothing — it
 imports the existing terrain / risk / planners / cost and only *measures* and
@@ -9,7 +9,7 @@ angle gamma = atan2(dz, ds_horizontal) exceeds gamma_max:
   (B) the gamma penalty inside J is too weak to deter violations,
   (C) waypoint spacing is so fine that dz/ds inflates the per-step angle.
 
-Run:  python diagnose_gamma.py
+Run (from the repository root):  python -m scripts.diagnostics.diagnose_gamma
 Writes outputs/diag_terrain_slope.png and prints a full report.
 """
 
