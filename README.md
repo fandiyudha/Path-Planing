@@ -197,7 +197,7 @@ use the original waypoints.
 ## Parameters
 
 Values used for the paper run (`Config` defaults unless a scenario overrides
-them). Items marked † are not yet stated in the paper's Table 1.
+them). Items marked † are to be added to, or checked against, the paper's Table 1.
 
 | `Config` field / source | Value | Meaning |
 |---|---|---|
