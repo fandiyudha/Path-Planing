@@ -18,5 +18,8 @@ scipy==1.17.1
 matplotlib==3.10.9
 pandas==3.0.2
 
+# Protocol v2 settings file (configs/protocol_v2.yaml).
+pyyaml==6.0.3
+
 # Interactive dashboard (dashboard/app.py). Not needed for run_experiments.py.
 streamlit==1.58.0
