@@ -3,7 +3,7 @@
 Two layers, combining A*'s global view with APF's local smoothness:
 
 1. **Global layer** -- A* on a COARSER grid (factor ``cfg.hybrid_coarsen``)
-   minimising the shared length+risk+kinematic cost, producing a global
+   minimising the A* additive length+risk+kinematic edge cost, producing a global
    waypoint corridor that already avoids large hazard regions and concave
    traps (A* cannot be locally entrapped).
 
@@ -11,7 +11,8 @@ Two layers, combining A*'s global view with APF's local smoothness:
    as a *moving sub-goal*, advancing to the next once within a capture radius.
    The same kinematically-clamped step as the pure APF planner
    (:func:`uav_pathplan.planners.apf.apf_step`) supplies smoothness and enforces
-   ``kappa_max`` / ``gamma_max``.  Because the sub-goals lead around hazards, the
+   ``kappa_max`` (the flight-path-angle limit ``gamma_max`` is not enforced; it
+   is only measured by the shared evaluator).  Because the sub-goals lead around hazards, the
    local descent never faces a head-on wall, so APF's local-minimum failure is
    avoided -- the global sub-goals prevent entrapment.
 

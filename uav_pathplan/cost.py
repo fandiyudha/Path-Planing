@@ -1,10 +1,11 @@
 """The shared cost function J and its components.
 
-**Fairness contract.**  All three planners minimise *this* cost on *this* risk
-field with *this* altitude policy.  The only thing that differs between planners
-is the search mechanism, never the objective.  Both the full-path evaluator
-(:func:`evaluate`) and the per-edge helpers used inside A* (:func:`edge_cost`)
-live here so the three algorithms cannot drift apart.
+**Shared evaluator.**  Every planner's path is scored by :func:`evaluate` on the
+same risk field with the same altitude policy, so the reported J is comparable
+across planners.  The planners do not all minimise J itself: A* minimises an
+additive per-edge approximation (implemented inline in ``planners/astar.py``;
+the ``edge_*`` helpers at the bottom of this module are not used by it), APF
+follows a potential-field gradient, and the Hybrid combines both.
 
 A path ``pi`` is an ``(M, 2)`` array of horizontal waypoints ``p_0..p_N`` (so
 ``M = N + 1``).  Altitude ``z`` at each waypoint comes from the terrain's

@@ -1,8 +1,9 @@
 """Path planners: A*, APF, and Hybrid A*-APF.
 
-All three minimise the SAME cost function (``uav_pathplan.cost``) on the SAME
-risk field with the SAME altitude policy.  Only the search mechanism differs.
-Each planner returns a :class:`PlanResult`.
+All three receive the SAME terrain and risk field with the SAME altitude policy,
+and their paths are evaluated with the SAME cost function
+(:func:`uav_pathplan.cost.evaluate`).  Their internal objectives differ (see each
+module).  Each planner returns a :class:`PlanResult`.
 """
 
 from __future__ import annotations

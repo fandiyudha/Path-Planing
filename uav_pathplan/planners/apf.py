@@ -2,16 +2,18 @@
 
 Potential field
 ---------------
-    U(p) = 0.5*xi*||p - p_g||**2 + eta*Lambda(p)
+The step direction is derived from the force
 
-The attractive term pulls toward the goal; the repulsive term ``eta*Lambda``
-pushes away from detection hazard.  We descend ``U``:
+    F(p) = xi * (p_g - p) / ||p_g - p||  -  eta * grad Lambda(p)
 
-    p_{k+1} = p_k - alpha * grad U(p_k)
+i.e. a unit-magnitude ("capped") attraction toward the goal plus repulsion from
+detection hazard (equivalently the descent direction of
+``U = xi*||p - p_g|| + eta*Lambda``).
 
-``grad Lambda`` is obtained by **central finite differences** on the continuous
-hazard callable (``RiskField.Lambda``), sampling altitude from the policy at
-each probe point.  The gain ratio is mapped to the cost weights:
+``grad Lambda`` is obtained by **central finite differences** (step
+``apf_fd_step``) on ``RiskField.Lambda_field``, the bilinear interpolation of the
+precomputed hazard grid at planning altitude.  The gain ratio is mapped to the
+cost weights:
 ``eta/xi = wR/wL`` (so the field encodes the same length/risk trade-off the
 shared cost uses).
 
@@ -23,10 +25,11 @@ Kinematic clamping
 ------------------
 * Horizontal: the per-step heading change is clamped to ``kappa_max * step`` so
   the realised curvature never exceeds ``kappa_max = 1/R_min``.
-* Vertical: the step is shrunk (down to ``apf_min_step``) until the discrete
-  flight-path angle ``gamma = atan2(dz, ds)`` satisfies ``|gamma| <= gamma_max``;
-  if terrain is too steep to satisfy it at the minimum step, the step is taken
-  and the violation is recorded (it surfaces in the cost's climb penalty).
+* Vertical: NOT enforced.  The step is not shrunk for climb (``apf_min_step``
+  is unused); flight-path-angle violations are only measured afterwards by the
+  shared evaluator (climb penalty in J and ``climb_violations``).
+* Step length: ``min(alpha, distance to target) * max(0, cos theta)``, where
+  ``theta`` is the angle between the turn-limited heading and ``F``.
 
 Local-minimum detection
 -----------------------
