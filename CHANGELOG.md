@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased — protocol v2
+
+Extended, pre-registered evaluation behind `--protocol v2` (default stays v1;
+`v1.0-paper` still reproduces `paper_assets/` 55/55). Results:
+`paper_assets_v2/`, `RESULTS_V2.md`.
+
+### Added
+- `configs/protocol_v2.yaml` (registered before the evaluation run) and
+  `configs/apfe_tuning_dev.csv`.
+- `uav_pathplan/v2/`: rate-limited altitude mode, v2 evaluator (scenario
+  L_ref, closed L), randomised scenarios, statistics (Wilson CI, Holm,
+  rank-biserial, Friedman), runner and figures.
+- APF-E planner (`planners/apf_escape.py`, random-walk escape after
+  Barraquand & Latombe 1991).
+- `scripts/tune_apfe_dev.py`, `scripts/results_v2_tables.py`; tests for the
+  L_ref fix, the rate-limited altitude constraints, APF-E and v2 statistics.
+- PyYAML 6.0.3 dependency.
+
 ## v1.0-paper — 2026-10-11
 
 Repository state accompanying the Defence Science Journal submission

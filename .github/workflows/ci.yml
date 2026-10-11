@@ -34,3 +34,6 @@ jobs:
 
       - name: Quick experiment run
         run: python run_experiments.py --quick
+
+      - name: Protocol v2 smoke run (development seed)
+        run: python run_experiments.py --protocol v2 --quick

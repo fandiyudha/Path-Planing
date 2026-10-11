@@ -71,6 +71,54 @@ from the repository root.
 * `paper_assets/` holds the canonical results used in the paper and must not
   be edited.
 
+## Protocol v2 (extended evaluation)
+
+A second, pre-registered experimental protocol strengthens the evaluation
+methodology; the radar/threat model is unchanged. v1 stays the default and
+remains reproducible.
+
+```bash
+python run_experiments.py --protocol v2       # held-out evaluation seed -> paper_assets_v2/
+python scripts/results_v2_tables.py           # Markdown tables for RESULTS_V2.md
+```
+
+All settings are in `configs/protocol_v2.yaml`, which was committed (status
+`registered`) before the evaluation run. Differences from v1:
+
+1. **L_ref** = ‖goal − start‖ from the scenario. L is the closed length
+   `|p_0 − start| + path + |p_N − goal|`, so a path that stops within the goal
+   tolerance is not credited with L̃ < 0; the end gaps are reported.
+2. **Monte-Carlo variation in every scenario:** random terrain seed and
+   start/goal everywhere, plus documented jitter of the open radar, the whole
+   concave wall and its elements, the ridge positions/heights and radar, and
+   the high-density radar field.
+3. **concave_trap** keeps its uncalibrated wall (C = 1e9); its R̃ is tagged
+   `risk_kind = relative_exposure` in every output and is not compared across
+   scenarios.
+4. **APF-E**, a fourth planner: APF plus the random-walk local-minimum escape
+   of the randomized path planner (J. Barraquand and J.-C. Latombe, "Robot
+   motion planning: A distributed representation approach", *Int. J. Robotics
+   Research* 10(6), 628–649, 1991), flown under the same turn-rate limit.
+   Its parameters were selected on a development seed (1009) only; results
+   use the held-out seed 20251011.
+5. **Altitude modes**, applied to every returned path for evaluation:
+   `nap` (h + 50 m, as v1) and `rate_limited` (lowest profile with
+   z ≥ h + 50 m and |dz/ds| ≤ tan 15°). Hazard and line of sight are evaluated
+   at each mode's altitude. Planning itself still uses the nap hazard grid.
+6. **Grid sensitivity:** the whole suite at 5, 8 and 10 m (8 m is the
+   reference for Tables 2 and 3).
+7. **50 Monte-Carlo runs** per scenario.
+8. **Timing:** `time.perf_counter`, one warm-up per planner and resolution,
+   single-threaded numpy (`OMP/MKL/OPENBLAS_NUM_THREADS=1`); CPU, RAM, OS and
+   Python are written to `paper_assets_v2/environment.json`.
+
+Statistics: mean, SD, median and IQR of every metric over successful runs;
+success rate with Wilson 95 % CI; violation counts and proportions; paired
+Wilcoxon tests on J for all six planner pairs with Holm correction within each
+(resolution, altitude mode, scenario) and matched-pairs rank-biserial effect
+sizes; Friedman test (Kendall's W) over runs in which all four planners
+succeed. Results and discussion: `RESULTS_V2.md`.
+
 ## Repository structure
 
 ```
@@ -84,14 +132,21 @@ uav_pathplan/
   metrics.py              per-run metrics and mean/std aggregation
   stats.py                paired Wilcoxon tests with Holm adjustment
   plotting.py             overlays, 3D surfaces, time-vs-threats, Pareto figure
-  planners/               astar.py, apf.py, hybrid.py (+ PlanResult)
-tests/                    pytest suite (former smoke_*.py scripts + statistics test)
+  planners/               astar.py, apf.py, hybrid.py (+ PlanResult), apf_escape.py (APF-E, v2)
+  v2/                     protocol v2: altitude modes, evaluator, scenarios, stats, runner, figures
+configs/
+  protocol_v2.yaml        pre-registered protocol-v2 settings
+  apfe_tuning_dev.csv     APF-E tuning results on the development seed
+tests/                    pytest suite (v1 smoke tests, statistics, v2 tests)
 scripts/
   reproduce_paper.sh/.bat run the paper configuration and compare with paper_assets/
   compare_to_paper.py     PASS/FAIL comparison of outputs/ against paper_assets/
+  tune_apfe_dev.py        APF-E parameter selection (development seed only)
+  results_v2_tables.py    Markdown tables for RESULTS_V2.md
   diagnostics/            development diagnostics (not used for paper results)
 dashboard/                Streamlit dashboard (app.py, .streamlit/config.toml)
-paper_assets/             canonical results and figures of the paper (read-only)
+paper_assets/             canonical v1 results and figures of the paper (read-only)
+paper_assets_v2/          protocol-v2 results (see RESULTS_V2.md)
 ```
 
 ## Command-line options (`run_experiments.py`)
@@ -110,6 +165,14 @@ paper_assets/             canonical results and figures of the paper (read-only)
 | `--figures-only` | off | regenerate the deterministic figures only |
 | `--dpi` | 300 | figure resolution |
 | `--format` | `png` | figure format: `png`, `tiff` (LZW) or `eps` |
+| `--protocol` | `v1` | `v1` reproduces `paper_assets/`; `v2` runs the protocol in `--config` |
+| `--config` | `configs/protocol_v2.yaml` | v2 protocol file |
+| `--seed-set` | `eval` | v2 only: held-out evaluation seed or `dev` (development) seed |
+
+With `--protocol v2` the run count, resolutions, seeds and planner settings
+come from the protocol file; `--runs`, `--resolution`, `--seed`, `--dpi` and
+`--format` are ignored, and `--quick` runs a 2-run, 12 m smoke test on the
+development seed.
 
 Outputs: `results_per_run.csv`, `results_aggregate.csv` (mean/std over
 successful runs, success rate over all runs), `wilcoxon_J.csv`,
