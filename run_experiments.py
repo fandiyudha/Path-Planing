@@ -18,12 +18,36 @@ Paper settings:  python run_experiments.py --runs 20 --resolution 8 --seed 20240
 
 Reproduce a single figure: the per-scenario overlay/3D and the Pareto and
 time-vs-threats sweeps are written to the output directory (default ./outputs).
+
+Protocol v2 (settings in configs/protocol_v2.yaml; default stays v1):
+    python run_experiments.py --protocol v2                  # held-out evaluation seed
+    python run_experiments.py --protocol v2 --seed-set dev   # development seed
+    python run_experiments.py --protocol v2 --quick          # smoke run (dev seed)
 """
 
 from __future__ import annotations
 
-import argparse
-import time
+import os
+import sys
+
+
+def _wants_v2(argv) -> bool:
+    for i, a in enumerate(argv):
+        if a == "--protocol":
+            return i + 1 < len(argv) and argv[i + 1] == "v2"
+        if a.startswith("--protocol="):
+            return a == "--protocol=v2"
+    return False
+
+
+# Protocol v2 times single-threaded numpy; the thread variables must be set
+# before numpy is imported.  v1 runs are unaffected.
+if _wants_v2(sys.argv):
+    for _var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+        os.environ[_var] = "1"
+
+import argparse  # noqa: E402
+import time  # noqa: E402
 import tracemalloc
 from dataclasses import replace
 from pathlib import Path
@@ -181,7 +205,9 @@ def main():
     ap.add_argument("--runs", type=int, default=10, help="Monte-Carlo runs/scenario")
     ap.add_argument("--resolution", type=float, default=10.0, help="grid cell (m)")
     ap.add_argument("--scenarios", nargs="+", default=SCENARIOS)
-    ap.add_argument("--out", default="outputs")
+    ap.add_argument(
+        "--out", default=None, help="output directory (v1: outputs; v2: from the protocol)"
+    )
     ap.add_argument("--mem", action="store_true", help="record peak Python memory")
     ap.add_argument("--quick", action="store_true", help="fast sanity pass")
     ap.add_argument("--full", action="store_true", help="5 m grid, 20 runs")
@@ -199,7 +225,27 @@ def main():
         help="regenerate the deterministic figures only "
         "(skip the Monte-Carlo runs, CSVs, and tests)",
     )
+    ap.add_argument(
+        "--protocol",
+        choices=["v1", "v2"],
+        default="v1",
+        help="v1 (default): reproduces paper_assets/; v2: settings from --config",
+    )
+    ap.add_argument(
+        "--config", default="configs/protocol_v2.yaml", help="v2 protocol file (v2 only)"
+    )
+    ap.add_argument(
+        "--seed-set",
+        choices=["eval", "dev"],
+        default="eval",
+        help="v2 only: held-out evaluation seed or development seed",
+    )
     args = ap.parse_args()
+
+    if args.protocol == "v2":
+        from uav_pathplan.v2.runner import main as run_v2
+
+        sys.exit(run_v2(args))
 
     if args.quick:
         args.resolution, args.runs = 12.0, 4
@@ -208,7 +254,7 @@ def main():
 
     plotting.SAVE_DPI = args.dpi  # applies to every saved figure
 
-    out = Path(args.out)
+    out = Path(args.out or "outputs")
     out.mkdir(parents=True, exist_ok=True)
     t_start = time.perf_counter()
     print(

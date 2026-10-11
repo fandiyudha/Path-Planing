@@ -57,6 +57,7 @@ def _savefig(fig, out_path) -> None:
 ALGO_STYLE = {
     "astar": {"color": "#1f77b4", "label": "A-Star"},
     "apf": {"color": "#ff00ff", "label": "APF"},
+    "apfe": {"color": "#17becf", "label": "APF-E"},  # protocol v2 only
     "hybrid": {"color": "#2ca02c", "label": "Hybrid"},
 }
 # Backwards-compatible (color, label) view used by older callers.
