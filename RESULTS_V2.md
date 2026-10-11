@@ -378,3 +378,47 @@ on the code containing all v2 changes: **OVERALL PASS, 55/55 non-timing columns
 identical to `paper_assets/`** (max |diff| = 0; run time 183 s). `paper_assets/`
 was not modified (`git diff v1.0-paper -- paper_assets` is empty). The v1 state
 is tagged `v1.0-paper`.
+
+## 8. Commit hash mapping
+
+Hashes changed because the author/committer e-mail metadata was rewritten for privacy (private address replaced by the GitHub noreply address); author and committer dates are unchanged, and trees are unchanged except that the same address was also replaced in `.mailmap` in the 16 commits that contain that file. The initial commit `79c2a2a` is unchanged.
+
+* The **pre-registration commit `003e422` is now `6e10688`**; its author and
+  committer date are unchanged (2026-10-11T22:05:04+07:00), so the order
+  "registration before evaluation run" is preserved.
+* `paper_assets_v2/environment.json` is unmodified run output and still records
+  the pre-rewrite hash `003e422efb03bf016b45095d27021faf8dc95697`; it
+  corresponds to `6e10688`. The results commit `4698724` is now `f2e0720`.
+
+| old | new | tree | commit |
+|---|---|---|---|
+| `f30456a` | `cbc5df6` | identical | Move smoke_*.py to tests/ and convert them to pytest |
+| `6a34f5a` | `13ad6c1` | identical | Move diagnostic scripts to scripts/diagnostics/ |
+| `421992f` | `08235cf` | identical | Move the Streamlit dashboard to dashboard/ |
+| `a56e63b` | `e3b23aa` | identical | Pin exact dependency versions and record the Python version |
+| `9428091` | `7ce8f01` | identical | Add Holm-adjusted p-values to the paired Wilcoxon output |
+| `9d11280` | `00db835` | identical | Figures: --dpi default 300, --format png/tiff/eps, A-Star label |
+| `276ab1c` | `cc7c8e2` | identical | Add paper-reproduction scripts and compare_to_paper.py |
+| `11f8485` | `00e2600` | identical | Add ruff configuration and format the code |
+| `4508d34` | `fcf449a` | identical | Correct docstrings that misdescribe the planners' objectives |
+| `0355b2c` | `08d82ea` | identical | Rewrite README for the paper release |
+| `67cb681` | `db1c4ab` | identical | Add MIT licence, CITATION.cff and CHANGELOG (v1.0-paper) |
+| `d4e06ba` | `ba96a4a` | identical | Add GitHub Actions CI |
+| `da4aa63` | `264c1dc` | identical | README: clarify what the dagger in the parameter table means |
+| `e6da746` | `931c2fa` | identical | Add CLEANUP_REPORT.md |
+| `45e32fe` | `9fadfea` | differs only in `.mailmap` | Add .mailmap for the typo address on the initial commit |
+| `c544fb1` | `a5a7b1c` | differs only in `.mailmap` | test_cost: hand values for the resampled kinematic definition |
+| `e33dcb6` | `429cbb5` | differs only in `.mailmap` | paper_assets/README.txt: correct dpi note and Pareto source |
+| `89681ef` | `9b8a650` | differs only in `.mailmap` | README: document the methods exactly as implemented |
+| `5ee15a5` | `a445ce4` | differs only in `.mailmap` | CLEANUP_REPORT: pre-push status and rebased commit hashes |
+| `01b407d` | `95e22af` | differs only in `.mailmap` | v2: altitude modes and v2 path evaluator (L_ref fix) |
+| `a1387c4` | `8f88cbf` | differs only in `.mailmap` | Add APF-E: APF with random-walk local-minimum escape |
+| `6fa287a` | `5a5150c` | differs only in `.mailmap` | v2: draft protocol file and Monte-Carlo scenario builders |
+| `915342f` | `27ca568` | differs only in `.mailmap` | v2: runner, statistics, figures and --protocol switch |
+| `4342419` | `535dcb7` | differs only in `.mailmap` | v2: APF-E tuning script (development seed only) |
+| `b41a19f` | `0e0df9a` | differs only in `.mailmap` | v2: fix Wilson bounds at 0%/100% success; figure legibility |
+| `003e422` | `6e10688` | differs only in `.mailmap` | Pre-register protocol v2 (frozen before the evaluation run) |
+| `dbf4a64` | `b1a1057` | differs only in `.mailmap` | v2: script rendering the result tables as Markdown |
+| `4698724` | `f2e0720` | differs only in `.mailmap` | Add protocol-v2 results (held-out evaluation seed 20251011) |
+| `97275a0` | `7e9c1ed` | differs only in `.mailmap` | Add RESULTS_V2.md |
+| `4ac3836` | `908d92e` | differs only in `.mailmap` | Document protocol v2 (README, CHANGELOG) and add a v2 CI smoke run |
