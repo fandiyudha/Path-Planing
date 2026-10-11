@@ -20,6 +20,16 @@ SCENARIO_LABEL = {
 }
 
 
+# distinct markers / line styles so coinciding curves (APF-E == APF when it
+# never escapes) remain visible
+LINE_STYLE = {
+    "astar": dict(marker="o", ls="-"),
+    "apf": dict(marker="s", ls="--"),
+    "apfe": dict(marker="^", ls=":"),
+    "hybrid": dict(marker="D", ls="-."),
+}
+
+
 def _label(p):
     return plotting.ALGO_STYLE[p]["label"]
 
@@ -85,8 +95,8 @@ def success_bars(agg, planners, scenarios, out, stem, formats):
     for i, p in enumerate(planners):
         rows = [agg[(agg["scenario"] == s) & (agg["planner"] == p)].iloc[0] for s in scenarios]
         rate = np.array([r["success_rate"] for r in rows])
-        lo = rate - np.array([r["success_ci_lo"] for r in rows])
-        hi = np.array([r["success_ci_hi"] for r in rows]) - rate
+        lo = np.maximum(rate - np.array([r["success_ci_lo"] for r in rows]), 0.0)
+        hi = np.maximum(np.array([r["success_ci_hi"] for r in rows]) - rate, 0.0)
         ax.bar(
             x + (i - (len(planners) - 1) / 2) * width,
             rate,
@@ -102,7 +112,13 @@ def success_bars(agg, planners, scenarios, out, stem, formats):
     ax.set_xticklabels([SCENARIO_LABEL[s] for s in scenarios])
     ax.set_ylabel("success rate (Wilson 95 % CI)")
     ax.set_ylim(0, 1.05)
-    ax.legend(fontsize=8, ncol=len(planners), loc="lower left")
+    ax.legend(
+        fontsize=8,
+        ncol=len(planners),
+        loc="lower center",
+        bbox_to_anchor=(0.5, 1.0),
+        frameon=False,
+    )
     ax.grid(True, axis="y", alpha=0.3)
     fig.tight_layout()
     return save(fig, out, stem, formats)
@@ -125,11 +141,12 @@ def grid_sensitivity(
                 g["resolution"],
                 med,
                 yerr=[lo, hi],
-                marker="o",
-                ms=4,
+                ms=5,
+                mfc="none",
                 capsize=2,
                 color=_color(p),
                 label=_label(p),
+                **LINE_STYLE[p],
             )
         ax.set_xlabel("grid resolution (m)")
         if logy:
