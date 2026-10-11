@@ -121,7 +121,11 @@ APF–Hybrid in each scenario, over the runs in which both planners succeeded.
 `p_value` is the raw value; `p_holm` is Holm-adjusted within each scenario over
 the pairs that could be tested (the values reported in the paper).
 
-## Models
+## Methods (as implemented)
+
+This section describes what the code does; the paper text is aligned to it.
+
+### Environment
 
 **Terrain.** `h(x,y)` = value-noise fBm (5 octaves, persistence 0.42,
 lacunarity 2, base lattice 3), rescaled to `[0, fractal_max]`, smoothed with a
@@ -133,43 +137,19 @@ Gaussian (σ = 18 m), plus scripted Gaussian hills and ridges.
 `λ_j = V_j · C_j / max(R_j, R0)^4` if `R_j ≤ R_max,j`, else 0; `R_j` is the 3D
 range and `V_j ∈ {0,1}` is line of sight, tested by sampling the radar–point
 segment every `los_step` metres against the terrain. `Λ = Σ_j λ_j`.
-`C_j` is calibrated (`risk.calibrate_C`) so that a straight transit through
-the coverage disc at closest range `0.5 R_max` with clear line of sight has
-detection probability 0.5. The `concave_trap` "radars" are an exception: they
-use a fixed `C = 1e9` and act as a proxy obstacle wall, so `R̃` in that
-scenario is not a calibrated detection probability.
+In `open`, `ridge_corridor`, `high_density` and `pareto`, `C_j` is calibrated
+(`risk.calibrate_C`) so that a straight transit through the coverage disc at
+closest range `0.5 R_max` with clear line of sight has detection probability
+0.5.
 
-## Metrics
+**concave_trap wall.** The 23 "radars" of `concave_trap` are wall elements of
+a proxy obstacle, not calibrated threats: they use a fixed, **uncalibrated
+`C = 1e9`**, `R_max = 70 m`, `R0 = 20 m` and a 25 m mast
+(`scenarios.py: build_concave_trap`). `R̃` (and `Φ`) in this scenario is
+therefore a **relative exposure index**, not a calibrated detection
+probability.
 
-All metrics are computed by `metrics.compute_metrics` / `cost.evaluate` on the
-path a planner returns (`p_0 … p_N`, horizontal waypoints in metres), at the
-altitude `z = h + clearance`.
-
-| Column | Definition as implemented |
-|---|---|
-| `L` | `Σ_i ‖p_{i+1} − p_i‖`, horizontal length of the returned waypoints (m) |
-| `Ltil` (L̃) | `(L − L_ref)/L_ref`, `L_ref = ‖p_N − p_0‖` — the straight line between the path's **own** first and last points |
-| `Phi` (Φ) | `Σ_i Λ(m_i)·‖p_{i+1} − p_i‖`, `m_i` = segment midpoint; Λ is the exact line-of-sight hazard (not the grid) |
-| `Rtil` (R̃) | `1 − exp(−Φ)` |
-| `Lambda_peak` | `max_i Λ(m_i)` |
-| `J` | `wL·L̃ + wR·R̃ + wK·K̃`, with `K̃ = mean_k [max(0,(κ_k−κ_max)/κ_max) + max(0,(|γ_k|−γ_max)/γ_max)]` over the interior vertices `k` of the resampled path (below); `κ_max = 1/R_min` |
-| `kappa_peak` (κ_peak) | `max_k κ_k`, `κ_k = |Δψ_k| / (½(Δs_{k−1}+Δs_k))` (1/m) |
-| `curv_violations` | number of resampled interior vertices with `κ_k > 1/R_min` |
-| `gamma_peak_deg` (γ_peak) | `max_k |γ_k|` in degrees, `γ_k = atan2(Δz_k, Δs_k)` per resampled segment |
-| `climb_violations` | number of resampled segments with `|γ_k| > γ_max` |
-| `smoothness` | `Σ_k |Δψ_k|` over resampled interior vertices (rad) |
-| `d_min` | minimum 3D distance from any returned waypoint to any radar phase centre (m) |
-| `time_s` | wall-clock time of the planner call (`time.perf_counter`); the hazard-grid precomputation is excluded |
-| `n_exp` / `n_iter` | A-Star expanded states (Hybrid: of its coarse A-Star) / APF and Hybrid iterations |
-| `success` | A-Star: goal cell reached; APF/Hybrid: within 12 m of the goal |
-
-**Resampling.** `κ`, `γ`, `K̃`, the violation counts and smoothness are
-computed on a copy of the path resampled uniformly in arc length at
-`kin_resample_ds` (0 → the grid resolution, i.e. 8 m in the paper), so the
-definitions do not depend on each planner's waypoint spacing. `L`, `Φ` and `R̃`
-use the original waypoints.
-
-## Planners
+### Planners
 
 * **A-Star** (`planners/astar.py`). State = (cell, arrival move); 16-connected
   moves (8 neighbours + 8 knight moves), hence 16 arrival-heading bins, which
@@ -181,18 +161,62 @@ use the original waypoints.
   distance between the snapped start and goal cells. Penalties are summed over
   edges, whereas `J` averages `K̃`. Heuristic `wL·‖goal − n‖/L_ref`
   (admissible).
-* **APF** (`planners/apf.py`). Each step moves along the force
-  `F = ξ·(p_g − p)/‖p_g − p‖ − η·∇Λ_grid`, where `∇Λ_grid` is a central
-  difference (2.5 m) of the bilinear interpolation of the hazard grid,
-  `ξ = wL`, `η = wR`. The heading may change by at most `κ_max·s`, and the
-  step length is `s = min(α, ‖p_g − p‖)·max(0, cos θ)` (θ = angle between the
-  turn-limited heading and `F`, α = 5 m). No climb limit is enforced. Failure
-  is declared when the net displacement over 60 iterations is below 8 m
-  (local minimum) or after 6000 iterations; no escape heuristic is used.
+* **APF** (`planners/apf.py: apf_step`, `plan_apf`).
+  - *Force:* `F = ξ·(p_g − p)/‖p_g − p‖ − η·∇Λ_grid`. The attractive term is
+    **capped**: a unit vector toward the goal times `ξ`, independent of the
+    distance. `∇Λ_grid` is a central difference (`apf_fd_step` = 2.5 m) of the
+    bilinear interpolation of the hazard grid.
+  - *Gains:* `ξ = wL` and `η = wR` by default (`apf_xi = apf_eta = None`);
+    0.40 and 0.45 in the paper.
+  - *Step:* fixed base step `α = apf_alpha = 5 m`. The realised step is
+    `s = min(α, ‖p_g − p‖)·max(0, cos θ)`, where θ is the angle between `F` and
+    the heading turned toward `F` by at most `κ_max·α`; the vehicle does not
+    move against the force.
+  - *Heading:* the heading change per step is clamped to `κ_max·s`
+    (`κ_max = 1/R_min`), so a step of length 0 cannot turn.
+  - *Climb:* the flight-path angle is **not** clamped; climb/dive angles are
+    only penalised in `J` (through `K̃`) and counted in `climb_violations`.
+  - *Termination:* success within `apf_goal_tol` = 12 m of the goal; failure
+    ("local minimum") when the net displacement over 60 iterations is below
+    8 m, or after 6000 iterations. No escape heuristic is used.
 * **Hybrid** (`planners/hybrid.py`). A-Star as above on a grid coarsened by
-  `hybrid_coarsen = 4` (32 m at the 8 m resolution), then the APF step tracks
-  the coarse waypoints as moving sub-goals with `ξ = hybrid_attract = 5`,
-  `η = wR`, advancing when within `max(2α, 1.2·4·resolution)` (38.4 m at 8 m).
+  `hybrid_coarsen = 4` (32 m at the 8 m resolution), then the same `apf_step`
+  tracks the coarse waypoints as moving sub-goals with
+  `ξ = hybrid_attract = 5`, `η = wR`, advancing when within
+  `max(2α, 1.2·4·resolution)` (38.4 m at 8 m). As in APF, the climb angle is
+  not clamped.
+
+## Metrics
+
+All metrics are computed by `metrics.compute_metrics` / `cost.evaluate` on the
+path a planner returns (`p_0 … p_N`, horizontal waypoints in metres), at the
+altitude `z = h + clearance`.
+
+**Two versions of the path.**
+
+* `L`, `L̃`, `Φ`, `R̃` and `Λ_peak` use the **original** waypoints.
+* `κ`, `γ`, `K̃`, the violation counts and smoothness use a copy of the path
+  **resampled** uniformly in arc length at `kin_resample_ds` (default 0, which
+  means the grid resolution, i.e. 8 m in the paper). This makes the kinematic
+  definitions independent of each planner's waypoint spacing.
+
+| Column | Definition as implemented |
+|---|---|
+| `L` | `Σ_i ‖p_{i+1} − p_i‖`, horizontal length of the original waypoints (m) |
+| `Ltil` (L̃) | `(L − L_ref)/L_ref`. `L_ref = ‖p_N − p_0‖` is currently computed from the path's **own** first and last points, not from the scenario start and goal |
+| `Phi` (Φ) | `Σ_i Λ(m_i)·‖p_{i+1} − p_i‖`, `m_i` = midpoint of original segment `i`; Λ is the exact line-of-sight hazard (not the grid) |
+| `Rtil` (R̃) | `1 − exp(−Φ)` |
+| `Lambda_peak` | `max_i Λ(m_i)` |
+| `J` | `wL·L̃ + wR·R̃ + wK·K̃`, with `K̃ = mean_k [max(0,(κ_k−κ_max)/κ_max) + max(0,(|γ_k|−γ_max)/γ_max)]` over the interior vertices `k` of the resampled path (`γ_k` = segment leaving vertex `k`); `κ_max = 1/R_min` |
+| `kappa_peak` (κ_peak) | `max_k κ_k`, `κ_k = |Δψ_k| / (½(Δs_{k−1}+Δs_k))` on the resampled path (1/m) |
+| `curv_violations` | number of resampled interior vertices with `κ_k > 1/R_min` |
+| `gamma_peak_deg` (γ_peak) | `max_k |γ_k|` in degrees, `γ_k = atan2(Δz_k, Δs_k)` per resampled segment |
+| `climb_violations` | number of resampled segments with `|γ_k| > γ_max` |
+| `smoothness` | `Σ_k |Δψ_k|` over the interior vertices of the resampled path, `Δψ_k` the heading change wrapped to [−π, π) (rad) |
+| `d_min` | minimum 3D distance from any original waypoint to any radar phase centre (m) |
+| `time_s` | wall-clock time of the planner call (`time.perf_counter`); the hazard-grid precomputation is excluded |
+| `n_exp` / `n_iter` | A-Star expanded states (Hybrid: of its coarse A-Star) / APF and Hybrid iterations |
+| `success` | A-Star: goal cell reached; APF/Hybrid: within 12 m of the goal |
 
 ## Parameters
 
