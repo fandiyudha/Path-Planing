@@ -1,0 +1,27 @@
+# Author names and ORCIDs below are PLACEHOLDERS -- the authors must fill them in.
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper and this repository."
+title: "Terrain-Masked Risk-Aware Path Planning for Autonomous Aerial Vehicles: code and data"
+version: "1.0-paper"
+license: MIT
+repository-code: "https://github.com/fandiyudha/Path-Planing"
+type: software
+authors:
+  - family-names: "AUTHOR-1-FAMILY-NAME"
+    given-names: "AUTHOR-1-GIVEN-NAMES"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+  - family-names: "AUTHOR-2-FAMILY-NAME"
+    given-names: "AUTHOR-2-GIVEN-NAMES"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+preferred-citation:
+  type: article
+  title: "Terrain-Masked Risk-Aware Path Planning for Autonomous Aerial Vehicles: Benchmarking A-Star, Artificial Potential Field, and a Hybrid Planner"
+  journal: "Defence Science Journal"
+  status: submitted
+  authors:
+    - family-names: "AUTHOR-1-FAMILY-NAME"
+      given-names: "AUTHOR-1-GIVEN-NAMES"
+      orcid: "https://orcid.org/0000-0000-0000-0000"
+    - family-names: "AUTHOR-2-FAMILY-NAME"
+      given-names: "AUTHOR-2-GIVEN-NAMES"
+      orcid: "https://orcid.org/0000-0000-0000-0000"
