@@ -237,9 +237,10 @@ def main():
         verdict = ("significant" if t.significant else "n.s.") \
             if not t.note else t.note
         p = f"p={t.p_value:.4g}" if t.p_value == t.p_value else "p=-"
+        ph = f"p_holm={t.p_holm:.4g}" if t.p_holm == t.p_holm else "p_holm=-"
         print(f"  [{t.scenario:>14}] {t.alg_a:>5} vs {t.alg_b:<6} "
               f"n={t.n_pairs:2d}  med {t.median_a:.3f} vs {t.median_b:.3f}  "
-              f"{p}  {verdict}")
+              f"{p}  {ph}  {verdict}")
 
     print(f"\nWrote CSVs and figures to {out.resolve()}")
     print(f"Total wall-clock: {time.perf_counter() - t_start:.1f}s  "

@@ -5,6 +5,13 @@ start/goal/threats for every algorithm) and apply the Wilcoxon signed-rank test
 (``scipy.stats.wilcoxon``) to the three algorithm pairs (A* vs APF, A* vs Hybrid,
 APF vs Hybrid) on a chosen metric (default the final cost ``J``).  Only runs
 where *both* algorithms in a pair succeeded contribute to that pair's test.
+
+Multiple comparisons: within each scenario the raw p-values of the *valid*
+pairs (those for which a test could be computed, i.e. a finite p-value) are
+adjusted with the Holm step-down procedure (``p_holm``).  The raw ``p_value``
+and the unadjusted ``significant`` flag are kept unchanged; ``significant_holm``
+applies ``alpha`` to the Holm-adjusted value.  The paper reports the
+Holm-adjusted values.
 """
 
 from __future__ import annotations
@@ -28,8 +35,10 @@ class PairTest:
     median_b: float
     statistic: float
     p_value: float
-    significant: bool          # at alpha
+    significant: bool          # raw p_value < alpha (unadjusted)
     note: str = ""
+    p_holm: float = np.nan     # Holm-adjusted within the scenario (valid pairs)
+    significant_holm: bool = False   # p_holm < alpha
 
 
 def _matched(rows: list[RunMetrics], scenario: str, alg: str, metric: str) -> dict:
@@ -38,6 +47,27 @@ def _matched(rows: list[RunMetrics], scenario: str, alg: str, metric: str) -> di
     for r in rows:
         if r.scenario == scenario and r.algorithm == alg and r.success:
             out[r.run] = getattr(r, metric)
+    return out
+
+
+def holm_adjust(p_values) -> np.ndarray:
+    """Holm step-down adjusted p-values (same order as the input).
+
+    With ``m`` p-values sorted ascending ``p_(1) <= ... <= p_(m)``, the adjusted
+    value is ``max_{j<=i} min(1, (m - j + 1) * p_(j))``.  NaN entries are
+    ignored (they do not count towards ``m``) and stay NaN.
+    """
+    p = np.asarray(p_values, dtype=float)
+    out = np.full(p.shape, np.nan)
+    valid = np.flatnonzero(np.isfinite(p))
+    m = valid.size
+    if m == 0:
+        return out
+    order = valid[np.argsort(p[valid], kind="stable")]
+    running = 0.0
+    for rank, idx in enumerate(order):
+        running = max(running, min(1.0, (m - rank) * p[idx]))
+        out[idx] = running
     return out
 
 
@@ -70,6 +100,12 @@ def paired_tests(rows: list[RunMetrics], metric: str = "J",
                 except ValueError as e:           # e.g. all differences zero
                     pt.note = f"wilcoxon: {e}"
             results.append(pt)
+        # Holm correction over the valid pairs of this scenario
+        scn_tests = [t for t in results if t.scenario == scn]
+        adj = holm_adjust([t.p_value for t in scn_tests])
+        for t, ph in zip(scn_tests, adj):
+            t.p_holm = float(ph)
+            t.significant_holm = bool(ph < alpha) if np.isfinite(ph) else False
     return results
 
 
