@@ -5,7 +5,18 @@
 # status: registered -> frozen; committed before the full evaluation run.  After
 #                       the full run nothing here is retuned.  If a bug is found it
 #                       is fixed, documented in RESULTS_V2.md, and EVERYTHING is rerun.
-status: draft
+status: registered
+
+registration:
+  date: 2026-10-11
+  apfe_selection: >-
+    Grid point 7 of 8 selected by the registered rule on the development seed
+    (configs/apfe_tuning_dev.csv): the only point with mean success 1.000
+    over the four scenarios; its mean median J (0.587) is among the highest
+    of the grid (range 0.424-0.590), i.e. the rule traded cost for success.
+  note: >-
+    Frozen before the evaluation seed was used.  No setting below may be
+    retuned after the full run; any bug fix requires rerunning everything.
 
 seeds:
   development: 1009          # APF-E tuning only (never used for reported results)
@@ -66,10 +77,10 @@ planners:
       representation approach, Int. J. Robotics Research 10(6), 628-649, 1991.
     rng_stream: SeedSequence([master_seed, scenario_id, run, 101])
     turn_frac: 0.9           # fixed a priori (kept below kappa_max), not tuned
-    max_escapes: null        # selected on the development seed
-    turn_steps_min: null
-    turn_steps_max: null
-    straight_steps: null
+    max_escapes: 20          # selected on the development seed (see registration)
+    turn_steps_min: 10
+    turn_steps_max: 40
+    straight_steps: 30
   apfe_tuning:
     seed: development
     runs_per_scenario: 10
