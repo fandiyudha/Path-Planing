@@ -1,0 +1,45 @@
+{
+  "timestamp_utc": "2026-10-11T15:05:13+00:00",
+  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics",
+  "logical_cpus": 16,
+  "ram_gib": 13.9,
+  "os": "Windows-11-10.0.26200-SP0",
+  "python": "3.13.7",
+  "python_implementation": "CPython",
+  "packages": {
+    "numpy": "2.3.4",
+    "scipy": "1.17.1",
+    "pandas": "3.0.2",
+    "matplotlib": "3.10.9",
+    "pyyaml": "6.0.3"
+  },
+  "thread_env": {
+    "OMP_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1"
+  },
+  "git_commit": "003e422efb03bf016b45095d27021faf8dc95697",
+  "protocol_file": "configs\\protocol_v2.yaml",
+  "protocol_sha256": "0e185f138b6a8ac317a5506d35f7bce96fb2688051b2a32747b8803b9f92789c",
+  "protocol_status": "registered",
+  "seed_set": "eval",
+  "master_seed": 20251011,
+  "development_seed": 1009,
+  "evaluation_seed": 20251011,
+  "runs_per_scenario": 50,
+  "resolutions_m": [
+    5.0,
+    8.0,
+    10.0
+  ],
+  "reference_resolution_m": 8.0,
+  "apfe_parameters": {
+    "max_escapes": 20,
+    "turn_steps_min": 10,
+    "turn_steps_max": 40,
+    "straight_steps": 30,
+    "turn_frac": 0.9
+  },
+  "quick": false,
+  "wall_clock_s": 1839.6
+}

@@ -1,0 +1,174 @@
+# Protocol v2 -- experimental settings (single source of truth for --protocol v2).
+#
+# status: draft      -> APF-E parameters not yet selected; only the development
+#                       seed may be run (scripts/tune_apfe_dev.py).
+# status: registered -> frozen; committed before the full evaluation run.  After
+#                       the full run nothing here is retuned.  If a bug is found it
+#                       is fixed, documented in RESULTS_V2.md, and EVERYTHING is rerun.
+status: registered
+
+registration:
+  date: 2026-10-11
+  apfe_selection: >-
+    Grid point 7 of 8 selected by the registered rule on the development seed
+    (configs/apfe_tuning_dev.csv): the only point with mean success 1.000
+    over the four scenarios; its mean median J (0.587) is among the highest
+    of the grid (range 0.424-0.590), i.e. the rule traded cost for success.
+  note: >-
+    Frozen before the evaluation seed was used.  No setting below may be
+    retuned after the full run; any bug fix requires rerunning everything.
+
+seeds:
+  development: 1009          # APF-E tuning only (never used for reported results)
+  evaluation: 20251011       # held-out master seed for the full run (used once)
+
+monte_carlo:
+  runs_per_scenario: 50
+  scenarios: [open, concave_trap, ridge_corridor, high_density]
+  # Per-run random stream: numpy SeedSequence([master_seed, scenario_id, run, 2]),
+  # scenario_id: open=1, concave_trap=2, ridge_corridor=3, high_density=4.
+  # Terrain seed of every scenario: integers(1, 2**31 - 1) drawn from that stream.
+
+resolutions_m: [5.0, 8.0, 10.0]
+reference_resolution_m: 8.0  # resolution of the paper's Table 2 / Table 3
+
+altitude:
+  modes: [nap, rate_limited]
+  nap_clearance_m: 50.0      # nap: z = h + 50 m (v1 behaviour)
+  rate_limited_c_min_m: 50.0 # rate_limited: lowest z >= h + c_min with |dz/ds| <= tan(gamma_max)
+  profile_ds_m: 1.0          # arc-length sampling of the altitude profile
+  slope_margin: 1.0e-9       # relative margin on tan(gamma_max) (floating-point safety)
+  # Planners plan on the hazard grid at nap altitude (as in v1); altitude modes
+  # are applied to the returned horizontal path for evaluation only.
+
+evaluation:
+  L_ref: scenario start-goal distance ||goal - start||
+  L: closed length = |p_0 - start| + returned path length + |p_N - goal|
+  Phi: sum Lambda(midpoint, z_mode) * ds over returned segments (exact LOS)
+  kinematics: path resampled at kin_resample_ds (0 -> grid resolution)
+  gamma: atan2(dz, ds) with ds the arc-length step of the resampled path
+  violation_fractions:
+    curvature: curv_violations / interior vertices of the resampled path
+    climb: climb_violations / segments of the resampled path
+
+planners:
+  order: [astar, apf, apfe, hybrid]
+  labels: {astar: A-Star, apf: APF, apfe: APF-E, hybrid: Hybrid}
+  shared:                    # uav_pathplan.config.Config defaults (unchanged from v1)
+    wL: 0.40
+    wR: 0.45
+    wK: 0.15
+    R_min_m: 60.0
+    gamma_max_deg: 15.0
+    astar_connectivity: 16
+    apf_xi: wL               # APF and APF-E attraction gain
+    apf_eta: wR              # APF, APF-E and Hybrid repulsion gain
+    apf_alpha_m: 5.0
+    apf_fd_step_m: 2.5
+    apf_goal_tol_m: 12.0
+    apf_stuck_window: 60
+    apf_stuck_disp_m: 8.0
+    apf_max_iter: 6000
+    hybrid_coarsen: 4
+    hybrid_attract: 5.0
+  apfe:
+    reference: >-
+      J. Barraquand and J.-C. Latombe, Robot motion planning: A distributed
+      representation approach, Int. J. Robotics Research 10(6), 628-649, 1991.
+    rng_stream: SeedSequence([master_seed, scenario_id, run, 101])
+    turn_frac: 0.9           # fixed a priori (kept below kappa_max), not tuned
+    max_escapes: 20          # selected on the development seed (see registration)
+    turn_steps_min: 10
+    turn_steps_max: 40
+    straight_steps: 30
+  apfe_tuning:
+    seed: development
+    runs_per_scenario: 10
+    resolution_m: 8.0
+    altitude_mode: nap
+    grid:
+      max_escapes: [5, 20]
+      turn_steps: [[5, 20], [10, 40]]   # [min, max] steps of the random turn
+      straight_steps: [10, 30]
+    criterion: >-
+      Maximise the mean APF-E success rate over the four scenarios; ties broken by
+      the lower mean over scenarios of the median J of successful runs, then by the
+      lower mean number of escapes.
+
+scenarios:
+  open:
+    fractal_max_m: 70.0
+    hills: fixed as in v1 [(300, 700, 45, 140), (750, 300, 40, 130)]
+    radar: {x: 700.0, y: 320.0, jitter_m: 50.0, mast_height_m: 20.0, R_max_m: 220.0}
+    start_x: [60.0, 160.0]
+    start_y: [60.0, 160.0]
+    goal_x: [840.0, 940.0]
+    goal_y: [840.0, 940.0]
+  concave_trap:
+    fractal_max_m: 60.0
+    wall:                    # proxy obstacle, fixed uncalibrated C
+      C: 1.0e9
+      R_max_m: 70.0
+      R0_m: 20.0
+      mast_height_m: 25.0
+      half_width_m: 50.0
+      x_mouth_m: 350.0
+      x_back_m: 750.0
+      y_centre_m: 500.0
+      spacing_m: 44.0
+      offset_x_m: 30.0       # whole wall shifted by U(-30, 30) in x
+      offset_y_m: 30.0       # and U(-30, 30) in y
+      element_jitter_m: 6.0  # each element by U(-6, 6) in x and y (as v1)
+    start_x: [130.0, 180.0]
+    start_dy: [-20.0, 20.0]  # relative to the shifted wall centre line
+    goal_x: [880.0, 920.0]
+    goal_dy: [-20.0, 20.0]
+    risk_kind: relative_exposure  # Rtil/Phi are not detection probabilities;
+                                  # excluded from cross-scenario risk comparisons
+  ridge_corridor:
+    fractal_max_m: 70.0
+    hill: fixed as in v1 (250, 800, 55, 130)
+    ridges:
+      - {x: 500.0, y: 360.0, height_m: 230.0, sigma_m: 38.0, length_m: 300.0, orientation_deg: 0.0}
+      - {x: 640.0, y: 560.0, height_m: 230.0, sigma_m: 38.0, length_m: 240.0, orientation_deg: 90.0}
+    ridge_offset_m: 20.0     # each ridge centre by U(-20, 20) in x and y
+    ridge_height_factor: [0.85, 1.15]   # each ridge height x U(0.85, 1.15)
+    radar: {x: 500.0, y: 520.0, jitter_m: 20.0, mast_height_m: 30.0, R_max_m: 520.0}
+    start_x: [90.0, 150.0]
+    start_y: [90.0, 150.0]
+    goal_x: [850.0, 920.0]
+    goal_y: [850.0, 920.0]
+  high_density:
+    fractal_max_m: 80.0
+    hill: fixed as in v1 (500, 500, 60, 150)
+    n_radars: 16
+    radar_area_m: [200.0, 800.0]   # x, y ~ U(200, 800)
+    mast_height_m: 20.0
+    R_max_m: 190.0
+    start_x: [60.0, 140.0]
+    start_y: [60.0, 140.0]
+    goal_x: [860.0, 940.0]
+    goal_y: [860.0, 940.0]
+
+timing:
+  clock: time.perf_counter (planner call only; hazard-grid setup recorded separately)
+  warmup_runs: 1             # each planner once per resolution on a development-seed instance
+  threads: {OMP_NUM_THREADS: 1, MKL_NUM_THREADS: 1, OPENBLAS_NUM_THREADS: 1}
+
+statistics:
+  alpha: 0.05
+  aggregate: mean, SD (ddof=1), median, Q1, Q3, IQR over successful runs
+  success_ci: Wilson score interval, 95 %
+  wilcoxon: >-
+    paired two-sided Wilcoxon signed-rank on J (scipy.stats.wilcoxon defaults),
+    all 6 planner pairs, runs in which both planners succeeded
+  multiple_comparisons: Holm within each (resolution, altitude mode, scenario)
+  effect_size: >-
+    matched-pairs rank-biserial r = (R+ - R-) / (R+ + R-) on d = J_a - J_b
+    (zero differences dropped); r > 0 means planner a has the higher (worse) J
+  friedman: J over runs in which all four planners succeeded; Kendall's W reported
+
+outputs:
+  directory: paper_assets_v2
+  figure_dpi: 300
+  figure_formats: [png, tiff]

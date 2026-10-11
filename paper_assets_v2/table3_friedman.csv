@@ -1,0 +1,9 @@
+resolution,altitude_mode,scenario,metric,n_complete,k,chi2,p_value,kendall_w,note
+8.0,nap,open,J,50,4,135.83999999999997,2.980816305298963e-29,0.9055999999999998,
+8.0,rate_limited,open,J,50,4,135.83999999999997,2.980816305298963e-29,0.9055999999999998,
+8.0,nap,concave_trap,J,0,4,,,,fewer than 2 runs in which all planners succeeded
+8.0,rate_limited,concave_trap,J,0,4,,,,fewer than 2 runs in which all planners succeeded
+8.0,nap,ridge_corridor,J,50,4,148.6933333333334,5.042321812905119e-32,0.9912888888888894,
+8.0,rate_limited,ridge_corridor,J,50,4,150.0,2.634913928488041e-32,1.0,
+8.0,nap,high_density,J,50,4,140.16,3.49108865409204e-30,0.9344,
+8.0,rate_limited,high_density,J,50,4,140.16,3.49108865409204e-30,0.9344,
