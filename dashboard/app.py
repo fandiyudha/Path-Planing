@@ -14,18 +14,32 @@ Fairness contract (enforced here):
     terrain, the same risk field, and minimise the same cost J.  The GUI only
     changes inputs and displays outputs.
 
-Launch:  streamlit run app.py
+Launch (from the dashboard/ directory, so dashboard/.streamlit/config.toml is
+picked up):
+
+    cd dashboard
+    streamlit run app.py
+
+``streamlit run dashboard/app.py`` from the repository root also works but
+ignores dashboard/.streamlit/config.toml.
 """
 
 from __future__ import annotations
 
 import io
+import sys
 from dataclasses import replace
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+# The simulation package lives in the repository root, one level up.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 from uav_pathplan import scenarios as scn
 from uav_pathplan import plotting

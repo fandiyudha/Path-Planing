@@ -57,6 +57,7 @@ exactly. Outputs land in `./outputs/`.
 ## Interactive dashboard (Streamlit)
 
 ```bash
+cd dashboard
 streamlit run app.py
 ```
 
@@ -67,8 +68,8 @@ is generated in memory), so it hosts cleanly on the free tier:
 
 1. Push this repo to GitHub (see below).
 2. Go to <https://share.streamlit.io> → **New app** → pick the repo/branch and
-   set the main file to `app.py` → **Deploy**. It installs `requirements.txt`
-   automatically; no extra config is needed (`.streamlit/config.toml` is
+   set the main file to `dashboard/app.py` → **Deploy**. It installs `requirements.txt`
+   automatically; no extra config is needed (`dashboard/.streamlit/config.toml` is
    included).
 
 Notes for the free tier (≈1 GB RAM, 1 CPU): keep the grid **resolution at 10 m
@@ -78,7 +79,7 @@ driver (`run_experiments.py`) on the hosted app — generate the paper tables an
 figures locally. (Note: Vercel/Netlify are **not** suitable — Streamlit needs a
 persistent Python/WebSocket server, not serverless functions.)
 
-`app.py` is a thin **presentation layer**: it imports and calls the existing
+`dashboard/app.py` is a thin **presentation layer**: it imports and calls the existing
 simulation (terrain, risk, cost, planners, scenarios, metrics, plotting) and
 reimplements none of it. The fairness constraint is preserved — for any run all
 three planners read the same terrain, the same risk field, and minimise the same
@@ -327,11 +328,11 @@ uav_pathplan/
     apf.py         # APF + shared kinematically-clamped step (apf_step)
     hybrid.py      # coarse A* + local APF tracking
 run_experiments.py # top-level driver (Monte-Carlo, CSVs, figures, tests)
-app.py             # Streamlit dashboard — thin layer that imports the above
+dashboard/app.py   # Streamlit dashboard — thin layer that imports the above
 smoke_*.py         # per-step build-order checkpoints
 ```
 
-`app.py` adds no simulation logic; the only library change it required was
+`dashboard/app.py` adds no simulation logic; the only library change it required was
 making `plotting.plot_overlay`, `plot_surface_with_path`, and `plot_pareto`
 accept `out_path=None` and a `close` flag and **return the figure** (so the GUI
 can display/export live figures). These are backward-compatible —
