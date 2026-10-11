@@ -1,5 +1,7 @@
 # Repository clean-up report (v1.0-paper)
 
+Commit hashes below are those after the e-mail rewrite of §7.
+
 Scope: tidy the repository for the Defence Science Journal submission without
 changing any numerical behaviour. Commits are local on `main` (not pushed).
 `paper_assets/` was not modified (`git diff 79c2a2a HEAD -- paper_assets` is
@@ -43,19 +45,19 @@ empty).
 
 | Commit | Change |
 |---|---|
-| `1c1b046` | `smoke_*.py` → `tests/test_*.py` (git mv) and converted to pytest. Hand computations and the 1e-6 tolerance are unchanged; printed "expect" lines became assertions; figures go to `tmp_path`. Former Case A of `smoke_cost.py` kept unchanged as strict `xfail`, plus a variant with `kin_resample_ds` = vertex spacing. `pyproject.toml` with pytest settings. |
-| `abf8839` | `diagnose_curv_risk.py`, `diagnose_gamma.py`, `verify_calib.py` → `scripts/diagnostics/`; each docstring now starts with a one-line summary and the `python -m scripts.diagnostics.<name>` invocation. No code changes. |
-| `fe6d02a` | `app.py` + `.streamlit/` → `dashboard/`; `app.py` adds the repository root to `sys.path`; README paths updated. Checked with `streamlit.testing.AppTest` (render and a full Run, no exceptions). |
-| `cfd659f` | `requirements.txt` pinned with `==` (numpy 2.3.4, scipy 1.17.1, matplotlib 3.10.9, pandas 3.0.2, streamlit 1.58.0) plus a note on the Python version; `requirements-dev.txt` (pytest 9.1.1, ruff 0.17.0); `.python-version`. |
-| `9f7d8c4` | `stats.py`: `holm_adjust()`; `PairTest.p_holm` and `significant_holm` (Holm within each scenario over pairs with a finite p-value). Raw `p_value`/`significant` kept. The console summary prints both. `tests/test_stats.py`. |
-| `2ee1f1c` | `--dpi` default 130 → 300; new `--format {png,tiff,eps}` (TIFF LZW-compressed); overlay/surface figures no longer carry titles such as `concave_trap: A* vs APF vs Hybrid`; label "A-Star" in figures and dashboard; failure reasons in legends without underscores. |
-| `7a7445e` | `scripts/reproduce_paper.sh`, `scripts/reproduce_paper.bat`, `scripts/compare_to_paper.py`, `.gitattributes` (LF for .sh, CRLF for .bat). |
-| `7877107` | ruff config (E, W, F, I; line length 100) and `ruff format` of all code; a `TYPE_CHECKING` import for the `pd.DataFrame` string annotation in metrics.py. Re-verified by the full reproduction (§1). |
-| `c135814` | Docstring corrections only (ASTs with docstrings removed are identical), see D3–D6. |
-| `7e6fd4d` | README rewritten. |
-| `85ca2c6` | `LICENSE` (MIT, confirmed by the owner), `CITATION.cff` (placeholder authors/ORCIDs; validated with cffconvert against CFF 1.2.0), `CHANGELOG.md` entry v1.0-paper. |
-| `d60cc91` | `.github/workflows/ci.yml`: pinned install on Python 3.13, ruff, pytest, `run_experiments.py --quick`. |
-| `7f2733e` | README wording of the † marker in the parameter table (see Q9). |
+| `f30456a` | `smoke_*.py` → `tests/test_*.py` (git mv) and converted to pytest. Hand computations and the 1e-6 tolerance are unchanged; printed "expect" lines became assertions; figures go to `tmp_path`. Former Case A of `smoke_cost.py` kept unchanged as strict `xfail`, plus a variant with `kin_resample_ds` = vertex spacing. `pyproject.toml` with pytest settings. |
+| `6a34f5a` | `diagnose_curv_risk.py`, `diagnose_gamma.py`, `verify_calib.py` → `scripts/diagnostics/`; each docstring now starts with a one-line summary and the `python -m scripts.diagnostics.<name>` invocation. No code changes. |
+| `421992f` | `app.py` + `.streamlit/` → `dashboard/`; `app.py` adds the repository root to `sys.path`; README paths updated. Checked with `streamlit.testing.AppTest` (render and a full Run, no exceptions). |
+| `a56e63b` | `requirements.txt` pinned with `==` (numpy 2.3.4, scipy 1.17.1, matplotlib 3.10.9, pandas 3.0.2, streamlit 1.58.0) plus a note on the Python version; `requirements-dev.txt` (pytest 9.1.1, ruff 0.17.0); `.python-version`. |
+| `9428091` | `stats.py`: `holm_adjust()`; `PairTest.p_holm` and `significant_holm` (Holm within each scenario over pairs with a finite p-value). Raw `p_value`/`significant` kept. The console summary prints both. `tests/test_stats.py`. |
+| `9d11280` | `--dpi` default 130 → 300; new `--format {png,tiff,eps}` (TIFF LZW-compressed); overlay/surface figures no longer carry titles such as `concave_trap: A* vs APF vs Hybrid`; label "A-Star" in figures and dashboard; failure reasons in legends without underscores. |
+| `276ab1c` | `scripts/reproduce_paper.sh`, `scripts/reproduce_paper.bat`, `scripts/compare_to_paper.py`, `.gitattributes` (LF for .sh, CRLF for .bat). |
+| `11f8485` | ruff config (E, W, F, I; line length 100) and `ruff format` of all code; a `TYPE_CHECKING` import for the `pd.DataFrame` string annotation in metrics.py. Re-verified by the full reproduction (§1). |
+| `4508d34` | Docstring corrections only (ASTs with docstrings removed are identical), see D3–D6. |
+| `0355b2c` | README rewritten. |
+| `67cb681` | `LICENSE` (MIT, confirmed by the owner), `CITATION.cff` (placeholder authors/ORCIDs; validated with cffconvert against CFF 1.2.0), `CHANGELOG.md` entry v1.0-paper. |
+| `d4e06ba` | `.github/workflows/ci.yml`: pinned install on Python 3.13, ruff, pytest, `run_experiments.py --quick`. |
+| `da4aa63` | README wording of the † marker in the parameter table (see Q9). |
 
 Not verified: the CI workflow has not run on GitHub (nothing was pushed); its
 steps were run locally on Windows (lint, pytest, `--quick` in 27 s). Streamlit
@@ -151,7 +153,7 @@ Line numbers refer to the final commit unless marked *initial*.
 
 | # | Where | Discrepancy | Action |
 |---|---|---|---|
-| D1 | `tests/test_cost.py` (former `smoke_cost.py` Case A); `cost.py:161` | The hand-computed curvature uses the three original vertices (κ = 0.0157 m⁻¹); `cost.evaluate` resamples the path at `kin_resample_ds` (0 → grid resolution) before computing κ, γ, K̃, so it returns κ_peak = 0.314 m⁻¹, K̃ = 0.941, J = 0.307 (hand: 0.885, 0.298). The test predates the resampling. | Reported; kept as strict xfail. Not "fixed". |
+| D1 | `tests/test_cost.py` (former `smoke_cost.py` Case A); `cost.py:161` | The hand-computed curvature uses the three original vertices (κ = 0.0157 m⁻¹); `cost.evaluate` resamples the path at `kin_resample_ds` (0 → grid resolution) before computing κ, γ, K̃, so it returns κ_peak = 0.314 m⁻¹, K̃ = 0.941, J = 0.307 (hand: 0.885, 0.298). The test predates the resampling. | Kept as strict xfail at first; **resolved in §7** (expected values re-derived for the resampled definition; cost.py unchanged). |
 | D2 | README (*initial* l.45), `run_experiments.py:187,207` | README called `--full` (5 m) the publication setting; the paper used 8 m / 20 runs / seed 20240603 (`paper_assets/README.txt`). `--full` still means 5 m. | README fixed. |
 | D3 | README (*initial* l.11–12, 83–85); `__init__.py`, `cost.py`, `planners/__init__.py` docstrings; `dashboard/app.py:14,264` | "All planners minimise the same cost J". A-Star minimises an additive edge cost that differs from J: endpoint-average **grid** hazard (`astar.py:123`) instead of exact midpoint hazard, `|Δz|` per edge (`astar.py:127`), kinematic penalties **summed** rather than averaged, L_ref between snapped cells (`astar.py:100`). APF follows a force field; it does not minimise J. | README and library docstrings fixed; dashboard text not changed (open question Q6). |
 | D4 | README (*initial* l.176–177) | "A* also uses the per-edge helpers in cost.py" — they are unused. | README fixed; helpers left in place. |
@@ -160,11 +162,11 @@ Line numbers refer to the final commit unless marked *initial*.
 | D7 | `cost.py:140–141`; README (*initial* l.162) | Documented `L_ref = ‖p_g − p_s‖` (scenario start/goal). Implemented as the distance between the path's **own** first and last points. APF/Hybrid stop within 12 m of the goal without appending it; A-Star starts/ends at snapped cell centres. So L_ref differs slightly between planners and from the scenario distance. | README documents the implementation. Not changed (would alter results). Q1. |
 | D8 | `scenarios.py:89` vs `scenarios.py:104`, `config.py:165` | concave_trap docstring (and the old README) (and the *initial* README l.254–255) say the wall radars have `R_max < R_min`; the code uses R_max = 70 m > R_min = 60 m. | Reported only. Q3. |
 | D9 | `scenarios.py:104` | concave_trap "radars" use a fixed C = 1e9 (proxy obstacle wall), so concave_trap R̃/Φ (e.g. A-Star Φ mean 112.9, Hybrid 251.0) are not calibrated detection probabilities. | Stated in README. Q4. |
-| D10 | `paper_assets/README.txt:25` | Says figures render at 130 dpi; the committed `paper_assets/*.png` are 300 dpi (e.g. 2400×2100 px). The untracked `paper_assets.zip` holds the 130-dpi versions. | Not edited (paper_assets is read-only). Q5. |
+| D10 | `paper_assets/README.txt:25` | Says figures render at 130 dpi; the committed `paper_assets/*.png` are 300 dpi (e.g. 2400×2100 px). The untracked `paper_assets.zip` holds the 130-dpi versions. | **Resolved in §7** (README.txt corrected with the owner's approval). |
 | D11 | `config.py:108`, `run_experiments.py:181–182` | Three different defaults: `Config.resolution` = 5 m, CLI `--resolution` = 10 m and `--runs` = 10, paper = 8 m / 20. `Config.mc_runs` = 20 is unused. | Documented in README; not changed. |
 | D12 | `config.py:175`; `astar.py` | `astar_num_headings = 16` is never read; the number of heading bins equals the 16 move directions (8 neighbours + 8 knight moves), which are not uniformly spaced in angle. | README parameter table says so. |
 | D13 | `dashboard/app.py:99, 521` | The dashboard replaces each scenario's terrain seed with the sidebar seed, so its views do not reproduce the paper's figure instances (fixed seeds 11111/22222/33333/44444), contrary to the caption at l.521. | README states this; UI text unchanged. Q6. |
-| D14 | `outputs/run_full_calibrated.log` (untracked) | The log labels the Pareto sweep "ridge_corridor", but its numbers equal the current `pareto`-scenario sweep, and the regenerated `pareto_LvsR.png` is **pixel-identical** to `paper_assets/pareto_LvsR.png`. The paper's Pareto figure therefore comes from the `pareto` scenario (single unshielded radar). | Reported. Q7. |
+| D14 | `outputs/run_full_calibrated.log` (untracked) | The log labels the Pareto sweep "ridge_corridor", but its numbers equal the current `pareto`-scenario sweep, and the regenerated `pareto_LvsR.png` is **pixel-identical** to `paper_assets/pareto_LvsR.png`. The paper's Pareto figure therefore comes from the `pareto` scenario (single unshielded radar). | `paper_assets/README.txt` now says so (§7). Q7. |
 | D15 | `run_experiments.py` | `time_s` excludes the hazard-grid precomputation (`setup`); Hybrid time includes its coarse A-Star. | Documented in README. Q8. |
 | D16 | `--format eps` | EPS overlays are ≈18 MB each because the hazard map is embedded as an image; EPS cannot represent transparency (the 3D surface uses alpha 0.8). | Reported. |
 
@@ -206,3 +208,30 @@ the code.
 - **Q13.** **Figure titles:** the time-vs-threats and Pareto figures keep their plain
   titles ("Planner compute time vs threat count", "Pareto front: length vs
   detection risk"). Remove them too if the journal style requires it.
+
+## 7. Pre-push status (2026-10-11)
+
+Follow-up commits after the first report (all local, not pushed):
+
+| Commit | Change |
+|---|---|
+| (rebase) | Author/committer e-mail of the 14 cleanup commits corrected (`git rebase -r 79c2a2a --exec "git commit --amend --no-edit --reset-author"`). The initial commit `79c2a2a` (already on GitHub) was not rewritten. The rewritten tree is identical to the pre-rewrite tip (`git diff` empty). A safety branch `backup/pre-email-fix` points at the old tip and can be deleted after review. |
+| `45e32fe` | `.mailmap` maps the typo address on the initial commit to the correct one; `git log --format="%h %aN <%aE>"` and `git shortlog -se` show one identity for all commits. (`%ae` intentionally shows the raw address, so it still shows the typo on `79c2a2a`.) |
+| `c544fb1` | `tests/test_cost.py`: kinematics expectations derived by hand for the resampled definition (κ_peak = π/10, K̃ = (12π − 1)/39, J = 0.4(√2 − 1) + 0.15·K̃, smoothness = π/2; derivation in the test docstring); xfail removed. The original-vertex computation stays as the `kin_resample_ds = 100 m` case. `cost.py` unchanged. Resolves D1. |
+| `e33dcb6` | `paper_assets/README.txt` only: figures are 300 dpi; `pareto_LvsR.png` comes from the dedicated `pareto` scenario (single unshielded radar), not ridge_corridor. Resolves D10; documents D14. No other file in `paper_assets/` changed. |
+| `89681ef` | README "Methods (as implemented)": APF (capped attraction, α = 5 m, ξ = wL, η = wR, heading clamp κ_max·s, no climb clamp), concave_trap wall (C = 1e9, R_max = 70 m, R0 = 20 m; R̃ is a relative exposure index), L_ref from the path's own endpoints, resampling of κ/γ vs original path for L/Φ, smoothness definition. |
+
+Checks on the final code (CPython 3.13.7, pinned versions, Windows 11):
+
+| Check | Result |
+|---|---|
+| `ruff check .` / `ruff format --check .` (ruff 0.17.0) | All checks passed / 29 files already formatted |
+| `pytest` | **13 passed**, 0 failed, 0 xfail (37.8 s) |
+| `bash scripts/reproduce_paper.sh` | **OVERALL: PASS — 55/55 non-timing columns identical** to `paper_assets/` (max \|diff\| = 0); concave_trap A-Star vs Hybrid W = 62, p = 0.114 (Holm 0.114); open A-Star vs APF and APF vs Hybrid Holm p = 0.001415. Run time 184.6 s; timing differs from the paper run by up to 0.33 s in `time_s_mean` (29 %), informational only. |
+
+New minor finding: `cost.wrap_angle`'s docstring says it wraps into (−π, π],
+but the expression `(a + π) mod 2π − π` returns [−π, π) (`wrap_angle(π) = −π`).
+Only `|Δψ|` is used, so no metric is affected; the docstring was not changed.
+
+Still open: Q1–Q4, Q6–Q13 above; CI has not yet run on GitHub; pushing is left
+to the owner.
