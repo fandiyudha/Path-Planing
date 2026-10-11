@@ -1,28 +1,23 @@
 """Step-3 unit test: verify the cost function J by hand.
 
-Converted from the former ``smoke_cost.py`` (same hand computations and the
-same relative tolerance 1e-6).
+Converted from the former ``smoke_cost.py`` (same relative tolerance 1e-6).
 
 Uses a FLAT terrain (fractal_max=0, no features -> h=0 everywhere, z=clearance)
 so every quantity is analytic and can be recomputed in closed form here,
 independently of cost.py, then compared.
 
-NOTE (kinematics case): the hand computation evaluates curvature at the three
-ORIGINAL vertices.  ``cost.evaluate`` evaluates curvature/flight-path angle on a
-copy of the path resampled at ``Config.kin_resample_ds`` (0 -> grid resolution,
-5 m here), so the 90-degree corner is concentrated over one 5 m resampled
-vertex and ``kappa_peak``/``Ktil``/``J`` differ from the hand values.  The
-original script already reported "FAILURES PRESENT" for this case.  It is kept
-unchanged as a strict xfail so the discrepancy stays visible; see
-CLEANUP_REPORT.md.  ``test_case_kinematics_vertex_spacing`` repeats the same
-hand computation with ``kin_resample_ds`` equal to the vertex spacing, where the
-resampled path coincides with the original vertices.
+Kinematic terms (kappa, gamma, Ktil, violation counts, smoothness) are evaluated
+by ``cost.evaluate`` on a copy of the path resampled uniformly in arc length at
+``Config.kin_resample_ds`` (0 -> grid resolution); L and Phi use the original
+path.  The hand values below follow that definition.  (The former smoke script
+computed curvature at the three original vertices, which predates the
+resampling; that computation is kept as ``test_case_kinematics_vertex_spacing``,
+where a 100 m resampling step reproduces the original vertices.)
 
 Run:  pytest tests/test_cost.py
 """
 
 import numpy as np
-import pytest
 
 from uav_pathplan import cost as costmod
 from uav_pathplan.config import Config, RadarSpec
@@ -36,9 +31,12 @@ def approx(name, got, exp, tol=1e-6):
     return ok
 
 
-def _kinematics(kin_resample_ds: float) -> bool:
-    """No radars; an L-shaped 3-waypoint path; check length + curvature."""
-    print("Case A: kinematics (no radar, flat terrain, R_min=120)")
+# L-shaped path: 100 m east, then 100 m north (a 90-degree corner at (200, 100)).
+L_PATH = np.array([[100.0, 100.0], [200.0, 100.0], [200.0, 200.0]])
+
+
+def _evaluate_l_path(kin_resample_ds: float):
+    """No radars, flat terrain, R_min=120; evaluate the L-shaped path."""
     cfg = Config(
         fractal_max=0.0,
         hills=[],
@@ -52,25 +50,19 @@ def _kinematics(kin_resample_ds: float) -> bool:
         wK=0.15,
         kin_resample_ds=kin_resample_ds,
     )
+    assert cfg.resolution == 5.0  # Config default; used when kin_resample_ds == 0
     terrain = TerrainField.generate(cfg)
     risk = RiskField.build(cfg, terrain)
+    return costmod.evaluate(cfg, risk, terrain, L_PATH)
 
-    P = np.array([[100.0, 100.0], [200.0, 100.0], [200.0, 200.0]])
-    res = costmod.evaluate(cfg, risk, terrain, P)
 
-    # --- hand computation ---
-    L = 100.0 + 100.0
-    L_ref = np.hypot(100.0, 100.0)  # 141.42135624
-    Ltil = (L - L_ref) / L_ref  # 0.41421356
-    dpsi = np.pi / 2  # east -> north
-    sbar = 0.5 * (100 + 100)  # 100
-    kappa = dpsi / sbar  # 0.0157080
-    kappa_max = 1.0 / 120.0  # 0.00833333
-    kappa_pen = (kappa - kappa_max) / kappa_max  # 0.884955
-    Ktil = kappa_pen + 0.0  # gamma=0 (flat)
-    Rtil = 0.0
+def _check(res, *, kappa, Ktil, curv_violations, smoothness) -> bool:
+    """Compare a CostResult with hand values (length terms are spacing-free)."""
+    L = 100.0 + 100.0  # original path
+    L_ref = np.hypot(100.0, 100.0)  # 141.42135624 (path's own endpoints)
+    Ltil = (L - L_ref) / L_ref  # sqrt(2) - 1 = 0.41421356
+    Rtil = 0.0  # no radars
     J = 0.40 * Ltil + 0.45 * Rtil + 0.15 * Ktil
-
     ok = all(
         [
             approx("L", res.L, L),
@@ -79,28 +71,59 @@ def _kinematics(kin_resample_ds: float) -> bool:
             approx("Rtil", res.Rtil, Rtil),
             approx("Ktil", res.Ktil, Ktil),
             approx("J", res.J, J),
+            approx("smoothness", res.smoothness, smoothness),
+            approx("gamma_peak", res.gamma_peak, 0.0),  # flat terrain
         ]
     )
     print(
-        f"  curv_violations={res.curv_violations} (expect 1), "
+        f"  curv_violations={res.curv_violations} (expect {curv_violations}), "
         f"climb_violations={res.climb_violations} (expect 0)"
     )
-    return ok and res.curv_violations == 1 and res.climb_violations == 0
+    return ok and res.curv_violations == curv_violations and res.climb_violations == 0
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="hand calc uses original vertices; evaluate() resamples kinematics at the "
-    "grid resolution (kin_resample_ds=0 -> 5 m). Pre-existing; see CLEANUP_REPORT.md",
-)
 def test_case_kinematics():
-    """Original smoke_cost.py Case A, unchanged (default kin_resample_ds)."""
-    assert _kinematics(kin_resample_ds=0.0)
+    """Case A with the default resampling (kin_resample_ds=0 -> 5 m grid step).
+
+    Hand derivation for the resampled definition:
+
+    * Total arc length 200 m; resampling step 5 m -> n = 200/5 + 1 = 41 points
+      at s = 0, 5, ..., 200.  s = 100 is a sample point, so the corner (200, 100)
+      is resampled exactly: 40 segments of 5 m, 20 heading east then 20 north.
+    * Interior vertices k = 1..39 (N-1 = 39).  The heading change is 0 at every
+      vertex except the corner (k = 20), where |dpsi| = pi/2.
+    * Curvature at the corner: kappa = |dpsi| / sbar, sbar = (5 + 5)/2 = 5 m
+          kappa_peak = (pi/2) / 5 = pi/10 = 0.31415927 1/m
+      kappa_max = 1/R_min = 1/120 -> one violation (curv_violations = 1).
+    * Curvature penalty at the corner: (kappa - kappa_max)/kappa_max
+          = (pi/10)*120 - 1 = 12*pi - 1 = 36.69911184; 0 at the other 38 vertices.
+    * Flat terrain: z = 50 m everywhere, gamma = 0 -> no climb penalty.
+    * Ktil = mean over the 39 interior vertices = (12*pi - 1)/39 = 0.94100287
+    * smoothness = sum |dpsi| = pi/2 = 1.57079633 rad
+    * J = 0.40*(sqrt(2) - 1) + 0.45*0 + 0.15*(12*pi - 1)/39 = 0.30683586
+    """
+    print("Case A: kinematics on the 5 m resampled path (flat terrain, R_min=120)")
+    res = _evaluate_l_path(kin_resample_ds=0.0)
+    n_interior = 39
+    kappa = (np.pi / 2) / 5.0
+    kappa_max = 1.0 / 120.0
+    Ktil = ((kappa - kappa_max) / kappa_max) / n_interior
+    assert _check(res, kappa=kappa, Ktil=Ktil, curv_violations=1, smoothness=np.pi / 2)
 
 
 def test_case_kinematics_vertex_spacing():
-    """Case A with the resampling spacing equal to the 100 m vertex spacing."""
-    assert _kinematics(kin_resample_ds=100.0)
+    """Case A with a 100 m resampling step, which reproduces the original vertices.
+
+    This is the hand computation of the former smoke_cost.py: one interior
+    vertex, sbar = 100 m, kappa = (pi/2)/100 = 0.01570796, penalty
+    (kappa - 1/120)*120 = 0.88495559 = Ktil (mean over one vertex).
+    """
+    print("Case A': kinematics at the original vertices (kin_resample_ds=100)")
+    res = _evaluate_l_path(kin_resample_ds=100.0)
+    kappa = (np.pi / 2) / 100.0
+    kappa_max = 1.0 / 120.0
+    Ktil = (kappa - kappa_max) / kappa_max
+    assert _check(res, kappa=kappa, Ktil=Ktil, curv_violations=1, smoothness=np.pi / 2)
 
 
 def test_case_detection():
