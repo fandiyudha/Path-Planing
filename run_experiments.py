@@ -12,6 +12,9 @@ Usage
     python run_experiments.py --full          # 5 m grid, 20 MC runs (slow)
     python run_experiments.py --runs 15 --resolution 8 --seed 7
     python run_experiments.py --mem           # also record peak Python memory
+    python run_experiments.py --format tiff --dpi 600   # figure format/resolution
+
+Paper settings:  python run_experiments.py --runs 20 --resolution 8 --seed 20240603
 
 Reproduce a single figure: the per-scenario overlay/3D and the Pareto and
 time-vs-threats sweeps are written to the output directory (default ./outputs).
@@ -109,13 +112,14 @@ def make_overlays(args, out: Path):
             # metric values for the legend (read from the run record)
             mrows[name] = compute_metrics(cfg, terrain, risk, scenario, name,
                                           0, res).as_dict()
+        # No in-figure titles: the scenario is identified in the paper caption.
         plotting.plot_overlay(cfg, terrain, risk, spec.start, spec.goal,
-                              results, out / f"overlay_{scenario}.png",
-                              f"{scenario}: A* vs APF vs Hybrid", metrics=mrows)
+                              results, out / f"overlay_{scenario}.{args.format}",
+                              "", metrics=mrows)
         # 3D surface with EVERY attempted path (incl. failed APF stub + marker)
         plotting.plot_surface_with_paths(
-            cfg, terrain, results, out / f"surface_{scenario}.png",
-            f"{scenario}: terrain + paths", metrics=mrows)
+            cfg, terrain, results, out / f"surface_{scenario}.{args.format}",
+            "", metrics=mrows)
         print(f"  overlay+surface saved for {scenario}")
 
 
@@ -136,7 +140,7 @@ def time_vs_threats(args, out: Path):
             nexp[name].append(res.n_exp)
         print(f"  radars={nr:2d}: A*={times['astar'][-1]:.2f}s "
               f"(n_exp={nexp['astar'][-1]}), Hybrid={times['hybrid'][-1]:.2f}s")
-    plotting.plot_time_vs_threats(counts, times, out / "time_vs_threats.png",
+    plotting.plot_time_vs_threats(counts, times, out / f"time_vs_threats.{args.format}",
                                   nexp_by_alg=nexp)
 
 
@@ -161,7 +165,7 @@ def pareto_sweep(args, out: Path):
             L_vals.append(cr.L); R_vals.append(cr.Rtil); used_wR.append(wR)
             print(f"  wR={wR:.2f}: L={cr.L:.0f}m  Rtil={cr.Rtil:.3f}")
     if L_vals:
-        plotting.plot_pareto(L_vals, R_vals, used_wR, out / "pareto_LvsR.png")
+        plotting.plot_pareto(L_vals, R_vals, used_wR, out / f"pareto_LvsR.{args.format}")
 
 
 def main():
@@ -175,8 +179,10 @@ def main():
     ap.add_argument("--quick", action="store_true", help="fast sanity pass")
     ap.add_argument("--full", action="store_true", help="5 m grid, 20 runs")
     ap.add_argument("--no-plots", action="store_true")
-    ap.add_argument("--dpi", type=int, default=130,
-                    help="figure resolution in DPI (use 300 for print quality)")
+    ap.add_argument("--dpi", type=int, default=300,
+                    help="figure resolution in DPI (default 300)")
+    ap.add_argument("--format", choices=["png", "tiff", "eps"], default="png",
+                    help="figure file format (default png)")
     ap.add_argument("--figures-only", action="store_true",
                     help="regenerate the deterministic figures only "
                          "(skip the Monte-Carlo runs, CSVs, and tests)")
@@ -193,14 +199,14 @@ def main():
     t_start = time.perf_counter()
     print(f"UAV path-planning experiments | master seed = {args.seed} | "
           f"resolution = {args.resolution} m | runs = {args.runs} | "
-          f"dpi = {args.dpi}")
+          f"dpi = {args.dpi} | format = {args.format}")
 
     # --- figures-only fast path (deterministic; no Monte-Carlo) ------------
     if args.figures_only:
         make_overlays(args, out)
         time_vs_threats(args, out)
         pareto_sweep(args, out)
-        print(f"\nRegenerated figures at {args.dpi} DPI in {out.resolve()}")
+        print(f"\nRegenerated {args.format} figures at {args.dpi} DPI in {out.resolve()}")
         print(f"Total wall-clock: {time.perf_counter() - t_start:.1f}s")
         return
 

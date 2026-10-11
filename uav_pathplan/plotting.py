@@ -1,4 +1,4 @@
-"""Plotting and console-table helpers (matplotlib, saved as PNG).
+"""Plotting and console-table helpers (matplotlib).
 
 Figures:
   * 2D path overlays on a hazard heatmap with threats + terrain contours
@@ -6,7 +6,9 @@ Figures:
   * compute-time vs threat-count curve (A* scaling vs Hybrid)
   * Pareto front of L vs Rtil from sweeping the risk/length weight ratio
 
-All functions take already-computed objects and write a PNG to disk.
+All functions take already-computed objects and write the figure to disk.  The
+file format follows the suffix of ``out_path`` (PNG, TIFF or EPS from the
+driver's ``--format``); the resolution is :data:`SAVE_DPI`.
 """
 
 from __future__ import annotations
@@ -23,23 +25,36 @@ from .config import Config
 from .terrain import TerrainField
 from .risk import RiskField
 
-# Resolution (dots per inch) for every saved figure.  Override for print-quality
-# output, e.g. ``uav_pathplan.plotting.SAVE_DPI = 300`` or the driver's --dpi.
-SAVE_DPI = 130
+# Resolution (dots per inch) for every saved figure (raster formats).  Set via
+# the driver's --dpi, or ``uav_pathplan.plotting.SAVE_DPI = ...``.
+SAVE_DPI = 300
+
+
+def _savefig(fig, out_path) -> None:
+    """Save ``fig`` at :data:`SAVE_DPI`; the format follows the file suffix.
+
+    TIFF files are LZW-compressed (lossless) to keep 300-dpi figures small.
+    """
+    out_path = Path(out_path)
+    kwargs = {}
+    if out_path.suffix.lower() in (".tif", ".tiff"):
+        kwargs["pil_kwargs"] = {"compression": "tiff_lzw"}
+    fig.savefig(out_path, dpi=SAVE_DPI, **kwargs)
+
 
 # --------------------------------------------------------------------------- #
 # Single source of truth for per-algorithm styling.                           #
 #                                                                              #
 # High-contrast, reasonably colour-blind-aware, and chosen to stand out over  #
 # the dark->yellow ``inferno`` hazard colormap AND the white background:       #
-#   * A*     -> strong blue                                                    #
+#   * A-Star -> strong blue                                                    #
 #   * APF    -> magenta (never collides with the red/orange/yellow hazard)    #
 #   * Hybrid -> green                                                          #
 # NEVER use white / near-white / pale yellow for a path.  Every figure pulls   #
 # colours from here so they never drift between plots.                         #
 # --------------------------------------------------------------------------- #
 ALGO_STYLE = {
-    "astar":  {"color": "#1f77b4", "label": "A*"},
+    "astar":  {"color": "#1f77b4", "label": "A-Star"},
     "apf":    {"color": "#ff00ff", "label": "APF"},
     "hybrid": {"color": "#2ca02c", "label": "Hybrid"},
 }
@@ -63,7 +78,7 @@ def _algo_label(name: str) -> str:
 def _path_legend(name: str, res, m: dict | None) -> str:
     """Legend text incl. status and a key metric, pulled from the run record."""
     lbl = _algo_label(name)
-    reason = (res.info or {}).get("reason", "failed")
+    reason = (res.info or {}).get("reason", "failed").replace("_", " ")
     if res.success:
         if m is not None:
             L = m.get("L"); sm = m.get("smoothness")
@@ -148,7 +163,7 @@ def plot_overlay(cfg: Config, terrain: TerrainField, risk: RiskField,
     fig.colorbar(im, ax=ax, label="hazard (a.u.)", shrink=0.82)
     fig.tight_layout()
     if out_path is not None:
-        fig.savefig(out_path, dpi=SAVE_DPI)
+        _savefig(fig, out_path)
     if close:
         plt.close(fig)
     return fig
@@ -195,7 +210,7 @@ def plot_surface_with_paths(cfg: Config, terrain: TerrainField, results: dict,
              style="italic", color="#444444")
     fig.tight_layout(rect=(0, 0.04, 1, 1))
     if out_path is not None:
-        fig.savefig(out_path, dpi=SAVE_DPI)
+        _savefig(fig, out_path)
     if close:
         plt.close(fig)
     return fig
@@ -234,8 +249,8 @@ def plot_time_vs_threats(counts, times_by_alg: dict, out_path: Path,
         ax2 = ax.twinx()
         for alg, ns in nexp_by_alg.items():
             ax2.plot(counts, ns, ":", color="gray", alpha=0.6)
-        ax2.set_ylabel("A*/Hybrid expanded nodes (dotted)", color="gray")
-    fig.tight_layout(); fig.savefig(out_path, dpi=SAVE_DPI); plt.close(fig)
+        ax2.set_ylabel("A-Star/Hybrid expanded nodes (dotted)", color="gray")
+    fig.tight_layout(); _savefig(fig, out_path); plt.close(fig)
 
 
 def plot_pareto(L_vals, Rtil_vals, wR_vals, out_path: Path | None = None,
@@ -263,7 +278,7 @@ def plot_pareto(L_vals, Rtil_vals, wR_vals, out_path: Path | None = None,
     fig.colorbar(sc, ax=ax, label=r"risk weight $w_R$")
     fig.tight_layout()
     if out_path is not None:
-        fig.savefig(out_path, dpi=SAVE_DPI)
+        _savefig(fig, out_path)
     if close:
         plt.close(fig)
     return fig

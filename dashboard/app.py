@@ -53,7 +53,7 @@ from uav_pathplan.planners.hybrid import plan_hybrid
 
 SCENARIOS = list(scn.SCENARIO_BUILDERS)
 PLANNER_FN = {"astar": plan_astar, "apf": plan_apf, "hybrid": plan_hybrid}
-PLANNER_LABEL = {"astar": "A*", "apf": "APF", "hybrid": "Hybrid"}
+PLANNER_LABEL = {"astar": "A-Star", "apf": "APF", "hybrid": "Hybrid"}
 # Path colours come from the single shared palette in plotting.ALGO_STYLE so
 # they never drift between the dashboard and the batch figures.
 
@@ -218,7 +218,7 @@ def fig_to_png_bytes(fig, dpi=150) -> bytes:
 # --------------------------------------------------------------------------- #
 st.set_page_config(page_title="UAV Path Planning Dashboard",
                    layout="wide", page_icon="🛰")
-st.title("🛰 Risk-Aware UAV Path Planning — A* vs APF vs Hybrid")
+st.title("🛰 Risk-Aware UAV Path Planning — A-Star vs APF vs Hybrid")
 st.caption("Thin interactive layer over the existing simulation. For any run, "
            "all three planners share the same terrain, risk field, and cost J — "
            "only inputs change here.")
@@ -242,7 +242,7 @@ with st.sidebar:
                    f"*{scenario}* uses its scripted threats.")
 
     st.header("Algorithm")
-    mode = st.radio("Planner", ["A*", "APF", "Hybrid", "Compare all three"],
+    mode = st.radio("Planner", ["A-Star", "APF", "Hybrid", "Compare all three"],
                     index=3)
 
     st.header("Cost weights  (auto-normalised, sum = 1)")
@@ -269,7 +269,7 @@ with st.sidebar:
     run = st.button("▶ Run / Update", type="primary", width='stretch')
 
 # which planners
-WHICH = {"A*": ("astar",), "APF": ("apf",), "Hybrid": ("hybrid",),
+WHICH = {"A-Star": ("astar",), "APF": ("apf",), "Hybrid": ("hybrid",),
          "Compare all three": ("astar", "apf", "hybrid")}[mode]
 
 # build fields live (cached, cheap, weight-independent)
@@ -351,8 +351,8 @@ with tab_pareto:
                "cost length. Results are cached.")
     pc1, pc2, pc3 = st.columns(3)
     with pc1:
-        p_algo_label = st.selectbox("Planner for sweep", ["A*", "Hybrid", "APF"])
-        p_algo = {"A*": "astar", "Hybrid": "hybrid", "APF": "apf"}[p_algo_label]
+        p_algo_label = st.selectbox("Planner for sweep", ["A-Star", "Hybrid", "APF"])
+        p_algo = {"A-Star": "astar", "Hybrid": "hybrid", "APF": "apf"}[p_algo_label]
     with pc2:
         wr_lo, wr_hi = st.slider("wR sweep range", 0.0, 0.9, (0.05, 0.80), 0.05)
     with pc3:
