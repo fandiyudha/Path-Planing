@@ -88,7 +88,8 @@ planner has the higher, i.e. worse, J).
    0.186 at 5 / 8 / 10 m, driven by R̃ (median 0.343 / 0.151 / 0.075), so the
    **finer grid gave A-Star worse paths** under J. A plausible cause is that
    A-Star's per-edge turn penalty is summed over more, shorter edges on a
-   finer grid; this was **not verified**. The ranking Hybrid < A-Star in J held
+   finer grid; this was **not verified** in the registered analysis (see §9
+   for a post-hoc diagnostic). The ranking Hybrid < A-Star in J held
    at every resolution in ridge_corridor, high_density and concave_trap.
 10. **Altitude modes.** Rate-limited altitude removed all climb violations by
     construction (0 in every run) and left A-Star and Hybrid almost unchanged
@@ -153,7 +154,8 @@ in every scenario, scenario L_ref with closed L. Means at 8 m, nap:
   30-minute suite.
 * **Overlay figures:** where APF-E never escaped, its path coincides with APF's
   and is drawn on top of it.
-* **Not verified:** the cause of A-Star's grid sensitivity (finding 9).
+* **Not verified:** the cause of A-Star's grid sensitivity (finding 9); a
+  post-hoc diagnostic is reported separately in §9.
 * **Bugs found before registration** (in unit tests and a development-seed
   dress rehearsal; fixed, then the protocol was registered): a rounding issue
   counted segments flown exactly at γ_max as climb violations (fixed with a
@@ -422,3 +424,56 @@ Hashes changed because the author/committer e-mail metadata was rewritten for pr
 | `4698724` | `f2e0720` | differs only in `.mailmap` | Add protocol-v2 results (held-out evaluation seed 20251011) |
 | `97275a0` | `7e9c1ed` | differs only in `.mailmap` | Add RESULTS_V2.md |
 | `4ac3836` | `908d92e` | differs only in `.mailmap` | Document protocol v2 (README, CHANGELOG) and add a v2 CI smoke run |
+
+## 9. Manuscript figures, independent check and post-hoc diagnostic
+
+Added after the registered analysis (2026-10-12). Nothing in §1–§8 or in
+`paper_assets_v2/` was changed by these scripts.
+
+**Manuscript figures.** `python scripts/paper_figures_v2.py . <outdir>` draws
+Fig. 1 (representative paths, run 0, 8 m, nap; concave_trap, ridge_corridor,
+high_density), Fig. 2 (J distributions, 8 m, nap), Fig. 3 (grid sensitivity of
+median J, nap) and Fig. 4 (altitude modes, 8 m) from
+`paper_assets_v2/results_per_run.csv`, as PNG and 300-dpi TIFF. Re-running it
+here reproduced the four TIFFs supplied with the manuscript pixel-for-pixel.
+The figures are not committed; the script regenerates them.
+
+**Independent statistics check.** `python scripts/verify_v2_stats.py .`
+recomputes the statistics without `uav_pathplan/v2/stats.py`. It agrees with
+`results_aggregate.csv` for all 96 (resolution × mode × scenario × planner)
+groups (success rate, Wilson CI, median, IQR, mean, SD of J, median R̃, L̃ and
+time; max |difference| ≤ 1e-14), and with `stats_wilcoxon_J.csv` for all 108
+tested pairs (n, W, Holm p and rank-biserial r identical).
+
+**Post-hoc diagnostic — not pre-registered.** Finding 9 hypothesised that
+A-Star's summed per-edge turn penalty grows on finer grids.
+`scripts/diagnostics/diag_astar_turn_penalty.py` re-plans A-Star on the
+held-out instances (runs 0–19, nap) twice: as registered (`default`) and with
+the turn penalty switched off for planning only (`no_turn_penalty`,
+R_min = 1e-3 m); both paths are scored with the registered evaluator.
+Results: `scripts/diagnostics/diag_astar_turn_penalty_results_posthoc.csv`.
+Its `default` rows equal the registered A-Star results for the same runs
+(180/180 rows, |difference| ≤ 4e-16), and re-running the script here
+reproduced sampled `no_turn_penalty` rows exactly. Medians over the 20 runs:
+
+| scenario | grid (m) | J default / no penalty | R̃ default / no penalty | curvature viol. (fraction) default / no penalty |
+|---|---|---|---|---|
+| high_density | 5 | 0.319 / 0.176 | 0.408 / 0.000 | 0.017 / 0.134 |
+| high_density | 8 | 0.196 / 0.150 | 0.120 / 0.000 | 0.030 / 0.141 |
+| high_density | 10 | 0.179 / 0.149 | 0.046 / 0.000 | 0.036 / 0.144 |
+| ridge_corridor | 5 | 0.125 / 0.139 | 0.000 / 0.000 | 0.021 / 0.072 |
+| ridge_corridor | 8 | 0.123 / 0.135 | 0.000 / 0.000 | 0.030 / 0.097 |
+| ridge_corridor | 10 | 0.122 / 0.129 | 0.000 / 0.000 | 0.032 / 0.100 |
+| concave_trap† | 5 | 0.085 / 0.072 | 0.000 / 0.000 | 0.029 / 0.098 |
+| concave_trap† | 8 | 0.079 / 0.064 | 0.000 / 0.000 | 0.038 / 0.097 |
+| concave_trap† | 10 | 0.055 / 0.062 | 0.000 / 0.000 | 0.062 / 0.109 |
+
+Reading, descriptive only (no tests were run, and the instances are the
+already-analysed held-out ones): in high_density, removing the turn penalty
+removes most of A-Star's grid dependence (J 0.176 / 0.150 / 0.149) and its
+risk (median R̃ 0), at the cost of roughly 4–8× more curvature violations.
+This is consistent with the turn-penalty hypothesis for that scenario. The
+effect is not general: in ridge_corridor the penalty-free variant has higher
+J at every resolution, and in concave_trap it is lower at 5 and 8 m but
+higher at 10 m. The registered results and findings are unchanged.
+

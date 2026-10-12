@@ -17,6 +17,10 @@ Extended, pre-registered evaluation behind `--protocol v2` (default stays v1;
 - `scripts/tune_apfe_dev.py`, `scripts/results_v2_tables.py`; tests for the
   L_ref fix, the rate-limited altitude constraints, APF-E and v2 statistics.
 - PyYAML 6.0.3 dependency.
+- `scripts/paper_figures_v2.py` (manuscript figures 1-4), `scripts/verify_v2_stats.py`
+  (independent statistics check) and the post-hoc
+  `scripts/diagnostics/diag_astar_turn_penalty.py` with its results CSV
+  (not pre-registered; RESULTS_V2.md §9).
 
 ## v1.0-paper — 2026-10-11
 

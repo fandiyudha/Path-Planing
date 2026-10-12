@@ -119,6 +119,36 @@ Wilcoxon tests on J for all six planner pairs with Holm correction within each
 sizes; Friedman test (Kendall's W) over runs in which all four planners
 succeed. Results and discussion: `RESULTS_V2.md`.
 
+### Manuscript figures, statistics check and post-hoc diagnostic
+
+These scripts only read `paper_assets_v2/` and `configs/protocol_v2.yaml`;
+they write to the directory given or to `outputs/` (git-ignored) and never
+modify the registered results.
+
+```bash
+# Manuscript figures 1-4 (PNG + 300-dpi LZW TIFF, no titles, greyscale-legible)
+python scripts/paper_figures_v2.py . outputs/paper_figures_v2
+
+# Independent re-computation of the v2 statistics from results_per_run.csv
+python scripts/verify_v2_stats.py .          # -> outputs/verify_v2/
+
+# POST-HOC diagnostic of A-Star's grid sensitivity (not pre-registered)
+python scripts/diagnostics/diag_astar_turn_penalty.py . 20     high_density,ridge_corridor,concave_trap 5,8,10   # -> outputs/diag_astar_*.csv
+```
+
+* `paper_figures_v2.py`: Fig. 1 representative paths (run 0 of the held-out
+  seed, 8 m, nap; re-planned), Fig. 2 J distributions (8 m, nap), Fig. 3 grid
+  sensitivity, Fig. 4 altitude modes. About 15 s.
+* `verify_v2_stats.py`: re-implements Wilson CIs, medians/IQR, Wilcoxon with
+  Holm and the rank-biserial r without using `uav_pathplan/v2/stats.py`, and
+  prints the 8 m / nap tables.
+* `diagnostics/diag_astar_turn_penalty.py`: plans A-Star with and without its
+  turn penalty on the held-out instances and evaluates both with the v2
+  evaluator. Its committed output,
+  `scripts/diagnostics/diag_astar_turn_penalty_results_posthoc.csv`
+  (runs 0-19), is a **post-hoc** analysis, not part of the registered
+  protocol. The full call above takes an estimated 15-20 minutes (not timed).
+
 ## Repository structure
 
 ```
@@ -143,7 +173,10 @@ scripts/
   compare_to_paper.py     PASS/FAIL comparison of outputs/ against paper_assets/
   tune_apfe_dev.py        APF-E parameter selection (development seed only)
   results_v2_tables.py    Markdown tables for RESULTS_V2.md
-  diagnostics/            development diagnostics (not used for paper results)
+  paper_figures_v2.py     manuscript figures 1-4 from paper_assets_v2/
+  verify_v2_stats.py      independent re-computation of the v2 statistics
+  diagnostics/            development diagnostics (not used for paper results), and the
+                          post-hoc A-Star turn-penalty diagnostic + its results CSV
 dashboard/                Streamlit dashboard (app.py, .streamlit/config.toml)
 paper_assets/             canonical v1 results and figures of the paper (read-only)
 paper_assets_v2/          protocol-v2 results (see RESULTS_V2.md)
